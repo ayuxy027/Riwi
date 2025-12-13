@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { Lock, FileText, Trophy, Coins, ArrowUpRight } from "lucide-react";
 
 const Hero = () => {
   return (
@@ -105,7 +106,7 @@ const Hero = () => {
                 </div>
                 <div className="flex-1 flex justify-center">
                   <div className="flex items-center gap-2 px-4 py-1.5 bg-white border border-gray-200 rounded-lg text-xs text-gray-500 font-medium shadow-sm w-64 justify-center">
-                    <span className="text-green-500">🔒</span> monadreview.app/dashboard
+                    <Lock className="w-3 h-3 text-green-500" /> monadreview.app/dashboard
                   </div>
                 </div>
               </div>
@@ -114,14 +115,14 @@ const Hero = () => {
               <div className="p-8 bg-gray-50/50 min-h-[450px]">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                   {[
-                    { title: 'Total Reviews', value: '1,284', icon: '📝', change: '+12%' },
-                    { title: 'Reputation Score', value: '850/1000', icon: '🏆', change: 'Top 5%' },
-                    { title: 'MR Tokens', value: '5,420', icon: '💰', change: '≈ $240' }
+                    { title: 'Total Reviews', value: '1,284', icon: FileText, change: '+12%' },
+                    { title: 'Reputation Score', value: '850/1000', icon: Trophy, change: 'Top 5%' },
+                    { title: 'MR Tokens', value: '5,420', icon: Coins, change: '≈ $240' }
                   ].map((stat) => (
                     <div key={stat.title} className="bg-white border border-gray-100 rounded-2xl p-6 hover:border-[#6E54FF]/30 hover:shadow-lg hover:shadow-[#6E54FF]/5 transition-all cursor-default group">
                       <div className="flex justify-between items-start mb-4">
                         <div className="w-10 h-10 bg-[#6E54FF]/10 text-[#6E54FF] rounded-xl flex items-center justify-center text-xl">
-                          {stat.icon}
+                          <stat.icon size={20} />
                         </div>
                         <span className="text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded-full">{stat.change}</span>
                       </div>
@@ -137,8 +138,8 @@ const Hero = () => {
                       <h4 className="text-lg font-bold text-gray-900">Recent Activity</h4>
                       <p className="text-sm text-gray-500">Real-time verifications on Monad</p>
                     </div>
-                    <button className="text-sm font-bold text-[#6E54FF] hover:bg-[#6E54FF]/5 px-4 py-2 rounded-lg transition-colors">
-                      View Explorer ↗
+                    <button className="text-sm font-bold text-[#6E54FF] hover:bg-[#6E54FF]/5 px-4 py-2 rounded-lg transition-colors flex items-center gap-1">
+                      View Explorer <ArrowUpRight size={14} />
                     </button>
                   </div>
                   <div className="space-y-4">
