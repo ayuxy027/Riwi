@@ -11,6 +11,7 @@ import { connectWallet, disconnectWallet as disconnectWalletService, getCurrentA
 import { getUserBalance, getUserReputation, getUserStake, getUserReviews, submitReview as submitReviewService, stakeTokens as stakeTokensService, type Review } from "../services/blockchainService";
 import type { WalletClient } from "viem";
 import type { TransactionStatus } from "../components/TransactionToast";
+import { NETWORK_CONFIG } from "../config/contracts";
 
 // ============================================
 // Types & Interfaces
@@ -75,14 +76,14 @@ export const AppContext = createContext<AppContextType>({
   isLoading: false,
   walletClient: null,
   transaction: null,
-  connectWallet: async () => {},
-  disconnectWallet: () => {},
-  refreshUserData: async () => {},
+  connectWallet: async () => { },
+  disconnectWallet: () => { },
+  refreshUserData: async () => { },
   submitReview: async () => "",
   stakeTokens: async () => "",
-  clearTransaction: () => {},
+  clearTransaction: () => { },
   currentPage: "home",
-  setCurrentPage: () => {},
+  setCurrentPage: () => { },
 });
 
 // ============================================
@@ -97,50 +98,80 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [walletClient, setWalletClient] = useState<WalletClient | null>(null);
   const [transaction, setTransaction] = useState<TransactionStatus | null>(null);
 
-  // Check for existing connection on mount
+  // Auto-connect wallet on app load if previously connected
   useEffect(() => {
-    const checkConnection = async () => {
-      if (isMetaMaskInstalled()) {
-        try {
-          const account = await getCurrentAccount();
-          if (account) {
-            setUser({
-              address: account,
-              connected: true,
-            });
-            // Note: walletClient will be set when user explicitly connects
-          }
-        } catch (error) {
-          console.warn("Could not check existing connection:", error);
+    const autoConnect = async () => {
+      // Only auto-connect if not manually disconnected
+      const wasDisconnected = sessionStorage.getItem('wallet_disconnected') === 'true';
+      if (wasDisconnected) return;
+
+      try {
+        const currentAccount = await getCurrentAccount();
+        if (currentAccount && isMetaMaskInstalled()) {
+          // Try to connect
+          const connection = await connectWallet();
+          setUser({
+            address: connection.address,
+            connected: true,
+          });
+          setWalletClient(connection.walletClient);
         }
+      } catch (error) {
+        console.warn("Auto-connect failed:", error);
+        // Clear disconnected flag if auto-connect fails
+        sessionStorage.removeItem('wallet_disconnected');
       }
     };
 
-    checkConnection();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    autoConnect();
   }, []);
 
   // Set up wallet event listeners
   useEffect(() => {
     if (!user.connected) return;
 
-    const cleanupAccounts = onAccountsChanged((accounts) => {
+    const cleanupAccounts = onAccountsChanged(async (accounts) => {
+      // Check if user manually disconnected - don't auto-reconnect
+      const wasDisconnected = sessionStorage.getItem('wallet_disconnected') === 'true';
+
       if (accounts.length === 0) {
-        // User disconnected
-        handleDisconnect();
+        // User disconnected in MetaMask
+        if (!wasDisconnected) {
+          // Only auto-disconnect if it wasn't a manual disconnect
+          handleDisconnect();
+        }
       } else {
-        // Account changed
-        setUser({
-          address: accounts[0],
-          connected: true,
-        });
+        // Account changed - only reconnect if not manually disconnected
+        if (!wasDisconnected) {
+          try {
+            const connection = await connectWallet();
+            setUser({
+              address: connection.address,
+              connected: true,
+            });
+            setWalletClient(connection.walletClient);
+          } catch (error) {
+            console.error("Error reconnecting after account change:", error);
+            // Still update address even if reconnect fails
+            setUser({
+              address: accounts[0],
+              connected: true,
+            });
+          }
+        }
       }
     });
 
     const cleanupChain = onChainChanged(() => {
-      // Chain changed, refresh data
+      // Chain changed, refresh data and reconnect to ensure wallet client is updated
       if (user.address) {
-        refreshUserData();
+        connectWallet().then(connection => {
+          setWalletClient(connection.walletClient);
+          refreshUserData();
+        }).catch(error => {
+          console.error("Error reconnecting after chain change:", error);
+          refreshUserData();
+        });
       }
     });
 
@@ -148,55 +179,10 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       cleanupAccounts();
       cleanupChain();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user.connected, user.address]);
 
-  // Refresh user data when address changes
-  useEffect(() => {
-    if (user.connected && user.address) {
-      refreshUserData();
-    } else {
-      setBlockchain(DEFAULT_BLOCKCHAIN_STATE);
-    }
-  }, [user.address, user.connected]);
-
-  const handleConnect = useCallback(async () => {
-    // Prevent multiple simultaneous connection attempts
-    if (isLoading) {
-      return;
-    }
-
-    setIsLoading(true);
-    setBlockchain(prev => ({ ...prev, error: null, isLoading: true }));
-
-    try {
-      const connection = await connectWallet();
-      setUser({
-        address: connection.address,
-        connected: true,
-      });
-      setWalletClient(connection.walletClient);
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Failed to connect wallet";
-      setBlockchain(prev => ({
-        ...prev,
-        error: errorMessage,
-        isLoading: false,
-      }));
-      console.error("Error connecting wallet:", error);
-      // Re-throw to allow UI to handle it
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [isLoading]);
-
-  const handleDisconnect = useCallback(() => {
-    disconnectWalletService();
-    setUser(DEFAULT_USER);
-    setBlockchain(DEFAULT_BLOCKCHAIN_STATE);
-    setWalletClient(null);
-  }, []);
-
+  // Define refreshUserData BEFORE it's used in other callbacks/effects
   const refreshUserData = useCallback(async () => {
     if (!user.address) return;
 
@@ -243,11 +229,106 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [user.address]);
 
+  // Refresh user data when address changes or connection status changes
+  useEffect(() => {
+    if (user.connected && user.address) {
+      refreshUserData();
+    } else {
+      setBlockchain(DEFAULT_BLOCKCHAIN_STATE);
+    }
+  }, [user.address, user.connected, refreshUserData]);
+
+  const handleConnect = useCallback(async () => {
+    // Prevent multiple simultaneous connection attempts
+    if (isLoading) {
+      return;
+    }
+
+    setIsLoading(true);
+    setBlockchain(prev => ({ ...prev, error: null, isLoading: true }));
+
+    try {
+      const connection = await connectWallet();
+      // Clear the disconnected flag when user manually connects
+      sessionStorage.removeItem('wallet_disconnected');
+
+      // Update user state
+      const newUser = {
+        address: connection.address,
+        connected: true,
+      };
+      setUser(newUser);
+      setWalletClient(connection.walletClient);
+
+      // Immediately refresh user data after connection
+      // This ensures both navbar and dashboard get the updated data
+      if (newUser.address) {
+        // Use a small delay to ensure state is updated
+        setTimeout(() => {
+          refreshUserData();
+        }, 100);
+      }
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to connect wallet";
+      setBlockchain(prev => ({
+        ...prev,
+        error: errorMessage,
+        isLoading: false,
+      }));
+      console.error("Error connecting wallet:", error);
+      // Re-throw to allow UI to handle it
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [isLoading, refreshUserData]);
+
+  const handleDisconnect = useCallback(() => {
+    try {
+      // Mark as manually disconnected to prevent auto-reconnect
+      sessionStorage.setItem('wallet_disconnected', 'true');
+
+      // Clear all state
+      disconnectWalletService();
+      setUser(DEFAULT_USER);
+      setBlockchain(DEFAULT_BLOCKCHAIN_STATE);
+      setWalletClient(null);
+      setTransaction(null);
+    } catch (error) {
+      console.error("Error disconnecting wallet:", error);
+      // Still clear state even if there's an error
+      sessionStorage.setItem('wallet_disconnected', 'true');
+      setUser(DEFAULT_USER);
+      setBlockchain(DEFAULT_BLOCKCHAIN_STATE);
+      setWalletClient(null);
+      setTransaction(null);
+    }
+  }, []);
+
   const stakeTokens = useCallback(async (amount: string): Promise<string> => {
-    if (!walletClient || !user.address) {
+    // Prevent multiple simultaneous staking attempts
+    if (isLoading || blockchain.isLoading) {
+      throw new Error("A transaction is already in progress. Please wait.");
+    }
+
+    if (!user.address) {
       throw new Error("Wallet must be connected to stake tokens");
     }
 
+    // Ensure walletClient is available, reconnect if needed
+    let currentWalletClient = walletClient;
+    if (!currentWalletClient) {
+      try {
+        const connection = await connectWallet();
+        currentWalletClient = connection.walletClient;
+        setWalletClient(currentWalletClient);
+      } catch (error) {
+        throw new Error("Failed to connect wallet. Please try connecting again.");
+      }
+    }
+
+    // Set loading state IMMEDIATELY to prevent multiple clicks
+    setIsLoading(true);
     setBlockchain(prev => ({ ...prev, isLoading: true, error: null }));
     setTransaction({
       status: "pending",
@@ -255,7 +336,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     });
 
     try {
-      const txHash = await stakeTokensService(amount, walletClient, user.address);
+      const txHash = await stakeTokensService(amount, currentWalletClient, user.address);
       
       setTransaction({
         status: "success",
@@ -263,10 +344,19 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         txHash,
       });
       
-      // Refresh user data after staking
+      // Wait a moment for blockchain state to update, then refresh
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Force refresh user data after staking
       await refreshUserData();
       
+      // Double-check by refreshing again after a short delay
+      setTimeout(async () => {
+        await refreshUserData();
+      }, 3000);
+      
       setBlockchain(prev => ({ ...prev, isLoading: false }));
+      setIsLoading(false);
       return txHash;
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : "Failed to stake tokens";
@@ -279,13 +369,26 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         isLoading: false,
         error: errorMessage,
       }));
+      setIsLoading(false);
       throw error;
     }
-  }, [walletClient, user.address, refreshUserData]);
+  }, [walletClient, user.address, refreshUserData, isLoading, blockchain.isLoading]);
 
   const submitReview = useCallback(async (content: string): Promise<string> => {
-    if (!walletClient || !user.address) {
+    if (!user.address) {
       throw new Error("Wallet must be connected to submit review");
+    }
+
+    // Ensure walletClient is available, reconnect if needed
+    let currentWalletClient = walletClient;
+    if (!currentWalletClient) {
+      try {
+        const connection = await connectWallet();
+        currentWalletClient = connection.walletClient;
+        setWalletClient(currentWalletClient);
+      } catch (error) {
+        throw new Error("Failed to connect wallet. Please try connecting again.");
+      }
     }
 
     setBlockchain(prev => ({ ...prev, isLoading: true, error: null }));
@@ -295,17 +398,17 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     });
 
     try {
-      const txHash = await submitReviewService(content, walletClient, user.address);
-      
+      const txHash = await submitReviewService(content, currentWalletClient, user.address);
+
       setTransaction({
         status: "success",
         message: "Review submitted successfully!",
         txHash,
       });
-      
+
       // Refresh user data after submission
       await refreshUserData();
-      
+
       setBlockchain(prev => ({ ...prev, isLoading: false }));
       return txHash;
     } catch (error: unknown) {

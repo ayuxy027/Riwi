@@ -111,6 +111,7 @@ export async function connectWallet(): Promise<WalletConnection> {
     const walletClient = createWalletClient({
       chain: monadTestnet,
       transport: custom(window.ethereum),
+      account: address,
     });
 
     return {
