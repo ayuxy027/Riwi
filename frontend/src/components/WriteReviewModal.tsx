@@ -15,6 +15,7 @@ interface WriteReviewModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSubmit: (review: ReviewSubmissionData) => void;
+    selectedProperty?: Property | null;
 }
 
 interface AIAnalysis {
@@ -23,7 +24,7 @@ interface AIAnalysis {
     status: "Excellent" | "Good" | "Fair" | "Poor";
 }
 
-const WriteReviewModal = ({ isOpen, onClose, onSubmit }: WriteReviewModalProps) => {
+const WriteReviewModal = ({ isOpen, onClose, onSubmit, selectedProperty: preSelectedProperty }: WriteReviewModalProps) => {
     const [selectedPropertyId, setSelectedPropertyId] = useState<string>("");
     const [rating, setRating] = useState(0);
     const [content, setContent] = useState("");
@@ -33,16 +34,18 @@ const WriteReviewModal = ({ isOpen, onClose, onSubmit }: WriteReviewModalProps) 
     useEffect(() => {
         if (isOpen) {
             // Reset state when opening
-            setSelectedPropertyId("");
+            setSelectedPropertyId(preSelectedProperty?.id || "");
             setRating(0);
             setContent("");
             setAiResult(null);
         }
-    }, [isOpen]);
+    }, [isOpen, preSelectedProperty]);
 
-    const selectedProperty = selectedPropertyId 
+    const selectedProperty = preSelectedProperty || (selectedPropertyId 
         ? MOCK_PROPERTIES.find(p => p.id === selectedPropertyId)
-        : null;
+        : null);
+    
+    const isPropertyLocked = !!preSelectedProperty;
 
     const handleAnalyze = async () => {
         if (content.length < 20) return;
@@ -111,51 +114,81 @@ const WriteReviewModal = ({ isOpen, onClose, onSubmit }: WriteReviewModalProps) 
                     {/* Property Selection */}
                     <div className="mb-6">
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Select Property / Hotel / Place
+                            {isPropertyLocked ? "Reviewing" : "Select Property / Hotel / Place"}
                         </label>
-                        <select
-                            value={selectedPropertyId}
-                            onChange={(e) => {
-                                setSelectedPropertyId(e.target.value);
-                                if (aiResult) setAiResult(null); // Reset analysis on change
-                            }}
-                            className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#6E54FF] focus:border-[#6E54FF] outline-none transition-all bg-white"
-                        >
-                            <option value="">-- Select a property to review --</option>
-                            <optgroup label="Hotels">
-                                {MOCK_PROPERTIES.filter(p => p.type === "hotel").map(property => (
-                                    <option key={property.id} value={property.id}>
-                                        {property.name} - {property.category}
-                                    </option>
-                                ))}
-                            </optgroup>
-                            <optgroup label="Restaurants">
-                                {MOCK_PROPERTIES.filter(p => p.type === "restaurant").map(property => (
-                                    <option key={property.id} value={property.id}>
-                                        {property.name} - {property.category}
-                                    </option>
-                                ))}
-                            </optgroup>
-                            <optgroup label="Attractions">
-                                {MOCK_PROPERTIES.filter(p => p.type === "attraction").map(property => (
-                                    <option key={property.id} value={property.id}>
-                                        {property.name} - {property.category}
-                                    </option>
-                                ))}
-                            </optgroup>
-                            <optgroup label="Protocols & Services">
-                                {MOCK_PROPERTIES.filter(p => p.type === "protocol" || p.type === "service").map(property => (
-                                    <option key={property.id} value={property.id}>
-                                        {property.name} - {property.category}
-                                    </option>
-                                ))}
-                            </optgroup>
-                        </select>
-                        {selectedProperty && (
-                            <p className="mt-2 text-sm text-gray-600">
-                                {selectedProperty.description}
-                                {selectedProperty.location && ` • ${selectedProperty.location}`}
-                            </p>
+                        
+                        {isPropertyLocked && selectedProperty ? (
+                            <div className="p-4 bg-[#6E54FF]/5 border border-[#6E54FF]/20 rounded-xl">
+                                <div className="flex items-start gap-3">
+                                    <div className="w-10 h-10 bg-[#6E54FF]/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-[#6E54FF]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+                                            <circle cx="12" cy="10" r="3"/>
+                                        </svg>
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <h4 className="font-semibold text-gray-900">{selectedProperty.name}</h4>
+                                        <p className="text-sm text-[#6E54FF] font-medium">{selectedProperty.category}</p>
+                                        <p className="text-sm text-gray-600 mt-1">{selectedProperty.description}</p>
+                                        {selectedProperty.location && (
+                                            <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                    <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+                                                    <circle cx="12" cy="10" r="3"/>
+                                                </svg>
+                                                {selectedProperty.location}
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <>
+                                <select
+                                    value={selectedPropertyId}
+                                    onChange={(e) => {
+                                        setSelectedPropertyId(e.target.value);
+                                        if (aiResult) setAiResult(null);
+                                    }}
+                                    className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#6E54FF] focus:border-[#6E54FF] outline-none transition-all bg-white"
+                                >
+                                    <option value="">-- Select a property to review --</option>
+                                    <optgroup label="Hotels">
+                                        {MOCK_PROPERTIES.filter(p => p.type === "hotel").map(property => (
+                                            <option key={property.id} value={property.id}>
+                                                {property.name} - {property.category}
+                                            </option>
+                                        ))}
+                                    </optgroup>
+                                    <optgroup label="Restaurants">
+                                        {MOCK_PROPERTIES.filter(p => p.type === "restaurant").map(property => (
+                                            <option key={property.id} value={property.id}>
+                                                {property.name} - {property.category}
+                                            </option>
+                                        ))}
+                                    </optgroup>
+                                    <optgroup label="Attractions">
+                                        {MOCK_PROPERTIES.filter(p => p.type === "attraction").map(property => (
+                                            <option key={property.id} value={property.id}>
+                                                {property.name} - {property.category}
+                                            </option>
+                                        ))}
+                                    </optgroup>
+                                    <optgroup label="Protocols & Services">
+                                        {MOCK_PROPERTIES.filter(p => p.type === "protocol" || p.type === "service").map(property => (
+                                            <option key={property.id} value={property.id}>
+                                                {property.name} - {property.category}
+                                            </option>
+                                        ))}
+                                    </optgroup>
+                                </select>
+                                {selectedProperty && (
+                                    <p className="mt-2 text-sm text-gray-600">
+                                        {selectedProperty.description}
+                                        {selectedProperty.location && ` • ${selectedProperty.location}`}
+                                    </p>
+                                )}
+                            </>
                         )}
                     </div>
 

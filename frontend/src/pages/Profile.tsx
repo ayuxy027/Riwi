@@ -248,7 +248,12 @@ const Profile = () => {
                                 </div>
 
                                 <div className="space-y-3">
-                                    {blockchain.reviews && blockchain.reviews.length > 0 ? (
+                                    {blockchain.isLoading ? (
+                                        <div className="text-center py-12 bg-gray-50 rounded-xl">
+                                            <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-[#6E54FF] border-t-transparent mb-4"></div>
+                                            <p className="text-gray-500">Loading reviews...</p>
+                                        </div>
+                                    ) : blockchain.reviews && blockchain.reviews.length > 0 ? (
                                         blockchain.reviews.slice(0, 5).map((review, i) => {
                                             // Parse contract response properly
                                             // Contract returns: (content, reviewer, timestamp, validated, rewardAmount, qualityScore)
@@ -260,9 +265,9 @@ const Profile = () => {
                                             const rewardAmount = review.rewardAmount || 0n;
                                             const reward = parseFloat(formatEther(rewardAmount));
                                             const status = review.validated ? "Verified" : "Pending";
-                                            const contentPreview = review.content ? 
-                                                (review.content.length > 80 ? review.content.substring(0, 80) + "..." : review.content) : 
-                                                "No content";
+                                            // Show full content, not just preview
+                                            const reviewContent = review.content || "No content available";
+                                            const contentPreview = reviewContent.length > 100 ? reviewContent.substring(0, 100) + "..." : reviewContent;
 
                                             return (
                                                 <motion.div
@@ -270,47 +275,61 @@ const Profile = () => {
                                                     initial={{ opacity: 0, x: -20 }}
                                                     animate={{ opacity: 1, x: 0 }}
                                                     transition={{ delay: 0.5 + i * 0.1 }}
-                                                    className="flex items-center justify-between p-4 bg-white border border-gray-100 rounded-xl hover:border-[#6E54FF]/30 hover:shadow-sm transition-all group"
+                                                    className="flex items-start gap-4 p-4 bg-white border border-gray-100 rounded-xl hover:border-[#6E54FF]/30 hover:shadow-sm transition-all group"
                                                 >
-                                                    <div className="flex items-center gap-4 flex-1 min-w-0">
-                                                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${status === "Verified" ? "bg-green-100 text-green-700" : "bg-[#6E54FF]/5 text-[#6E54FF]"}`}>
-                                                            <Icons.FileText />
+                                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${status === "Verified" ? "bg-green-100 text-green-700" : "bg-[#6E54FF]/5 text-[#6E54FF]"}`}>
+                                                        <Icons.FileText />
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center gap-2 mb-2">
+                                                            <p className="font-medium text-gray-900 group-hover:text-[#6E54FF] transition-colors">
+                                                                Review #{i + 1}
+                                                            </p>
+                                                            {status === "Verified" && (
+                                                                <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs font-bold">
+                                                                    ✓ Verified
+                                                                </span>
+                                                            )}
+                                                            {status === "Pending" && (
+                                                                <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded text-xs font-bold">
+                                                                    ⏳ Pending
+                                                                </span>
+                                                            )}
                                                         </div>
-                                                        <div className="flex-1 min-w-0">
-                                                            <div className="flex items-center gap-2 mb-1">
-                                                                <p className="font-medium text-gray-900 group-hover:text-[#6E54FF] transition-colors">
-                                                                    Review #{i + 1}
-                                                                </p>
-                                                                {status === "Verified" && (
-                                                                    <span className="px-1.5 py-0.5 bg-green-100 text-green-700 rounded text-xs font-bold">
-                                                                        ✓
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                            <p className="text-sm text-gray-500 mb-1">{dateStr} {timeStr && `at ${timeStr}`}</p>
-                                                            <p className="text-xs text-gray-600 truncate" title={review.content || "No content"}>
-                                                                {contentPreview}
+                                                        <p className="text-sm text-gray-500 mb-2">{dateStr} {timeStr && `at ${timeStr}`}</p>
+                                                        <div className="bg-gray-50 rounded-lg p-3 mb-2">
+                                                            <p className="text-sm text-gray-700 whitespace-pre-wrap break-words" title={reviewContent}>
+                                                                {reviewContent}
                                                             </p>
                                                         </div>
-                                                    </div>
-                                                    <div className="flex items-center gap-6 flex-shrink-0 ml-4">
-                                                        <div className="text-right">
-                                                            <p className="text-xs text-gray-500">Quality</p>
-                                                            <p className="font-bold text-gray-900">{qualityScore > 0 ? `${qualityScore}/100` : "Pending"}</p>
-                                                        </div>
-                                                        {reward > 0 && (
-                                                            <div className="text-right">
-                                                                <p className="text-xs text-gray-500">Reward</p>
-                                                                <p className="font-bold text-[#6E54FF]">+{reward.toFixed(2)} RVT</p>
+                                                        <div className="flex items-center gap-4 mt-2">
+                                                            <div>
+                                                                <p className="text-xs text-gray-500">Quality Score</p>
+                                                                <p className="font-bold text-gray-900">{qualityScore > 0 ? `${qualityScore}/100` : "Not scored yet"}</p>
                                                             </div>
-                                                        )}
+                                                            {reward > 0 && (
+                                                                <div>
+                                                                    <p className="text-xs text-gray-500">Reward</p>
+                                                                    <p className="font-bold text-[#6E54FF]">+{reward.toFixed(2)} RVT</p>
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </motion.div>
                                             );
                                         })
                                     ) : (
-                                        <div className="text-center py-12 bg-gray-50 rounded-xl">
-                                            <p className="text-gray-500">No reviews yet. Start reviewing to build your reputation!</p>
+                                        <div className="text-center py-12 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+                                            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                                <Icons.FileText />
+                                            </div>
+                                            <p className="text-gray-700 font-medium mb-2">No reviews yet</p>
+                                            <p className="text-sm text-gray-500 mb-4">Your submitted reviews will appear here</p>
+                                            {blockchain.hasSufficientStake === false && (
+                                                <p className="text-xs text-yellow-600 bg-yellow-50 px-3 py-2 rounded-lg inline-block">
+                                                    ⚠️ You need to stake at least 1 MON to submit reviews
+                                                </p>
+                                            )}
                                         </div>
                                     )}
                                 </div>

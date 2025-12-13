@@ -13,9 +13,11 @@ The following are the actual deployed contract addresses on Monad testnet:
 ```
 ReviewToken:        0x9Ce50706CD0F73bB5502b7AA0a8cD17D8513de83          # ERC-20 reward token
 ReputationSystem:   0xF158be31A900cA8B2Be13BBd22D9d81E64764DBC          # Reputation tracking
-ReviewStaking:      0x51F7cbd74731976d834a67F156dBC387CCc59c1D          # Staking verification
+ReviewStaking:      0xCd9352bFBCDfAB07EE8e664A64ECe191c1836180          # Staking verification (Updated)
 ReviewPlatform:     0x40C11dF88eEf1B1276978b750e315E49A929D10d          # Main orchestration
 ```
+
+**Note**: ReviewStaking was updated to fix deltaStake checking. Previous address: `0x51F7cbd74731976d834a67F156dBC387CCc59c1D` (deprecated)
 
 ### Network Information
 - **Network**: Monad Testnet
@@ -70,14 +72,16 @@ The deployed system consists of 4 interconnected smart contracts:
 
 ### 3. ReviewStaking.sol - Monad Staking Integration
 - **Purpose**: Verifies user stakes using Monad's staking precompile
+- **Contract Address**: `0xCd9352bFBCDfAB07EE8e664A64ECe191c1836180` (Updated - checks both stake and deltaStake)
 - **Key Functions**:
-  - `canUserReview(address user)` - Check if user can submit reviews
-  - `verifyStake(address user)` - Verify user's stake amount
-  - `getUserStake(address user)` - Get actual stake amount
+  - `canUserReview(address user)` - Check if user can submit reviews (checks both stake and deltaStake)
+  - `verifyStake(address user)` - Verify user's stake amount (checks both stake and deltaStake)
+  - `getUserStake(address user)` - Get actual stake amount (returns deltaStake if stake is 0)
   - `setValidatorId(uint64 _newValidatorId)` - Update validator ID
   - `setMinStakeAmount(uint256 _newMinStakeAmount)` - Update minimum stake
 - **Integration**: Interfaces with Monad's staking precompile at `0x0000000000000000000000000000000000001000`
 - **Configuration**: Validator ID (default: 1), Minimum stake amount (default: 1 token)
+- **Important**: The contract checks both `stake` (index 0) and `deltaStake` (index 3) from the staking precompile to handle new stakes that haven't been processed yet
 
 ### 4. ReviewPlatform.sol - Main Platform Orchestrator
 - **Purpose**: Main contract managing the complete review lifecycle
@@ -108,3 +112,14 @@ The deployed system consists of 4 interconnected smart contracts:
 - **Scalable**: Designed for high-volume review processing with batch operations
 - **Secure**: Proper access controls, ownership transfers after deployment
 - **Economic**: Quality-based rewards (higher quality = more tokens)
+
+## Recent Updates
+
+### ReviewStaking Contract Update (Latest)
+- **Issue**: Original contract (`0x51F7cbd74731976d834a67F156dBC387CCc59c1D`) only checked `stake` field (index 0) from Monad's staking precompile
+- **Problem**: New stakes are stored in `deltaStake` (index 3) and only moved to `stake` after epoch processing
+- **Impact**: Users with valid stakes in `deltaStake` were unable to submit reviews (transactions reverted)
+- **Solution**: Deployed new contract (`0xCd9352bFBCDfAB07EE8e664A64ECe191c1836180`) that checks both `stake` and `deltaStake`
+- **Result**: Users can now submit reviews immediately after staking, without waiting for epoch processing
+- **Status**: ReviewPlatform has been updated to use the new staking contract
+- **Verification**: All endpoints tested and working correctly

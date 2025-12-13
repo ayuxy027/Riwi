@@ -53,19 +53,23 @@ The Monad AI-Assisted Review System is a decentralized review platform that comb
 
 **Purpose**: Verifies user stakes using Monad's staking precompile
 
-**Contract Address**: `0x51F7cbd74731976d834a67F156dBC387CCc59c1D`
+**Contract Address**: `0xCd9352bFBCDfAB07EE8e664A64ECe191c1836180` (Updated - checks both stake and deltaStake)
+
+**Previous Address**: `0x51F7cbd74731976d834a67F156dBC387CCc59c1D` (Deprecated - only checked stake field)
 
 **Interfaces**:
 - `IMonadStaking` - Interface for Monad's staking precompile at address `0x0000000000000000000000000000000000001000`
 
 **Functions**:
-- `verifyStake(address user)` - Verifies user's stake amount from precompile (returns bool)
-- `canUserReview(address user)` - Checks if user can submit reviews based on stake (returns bool)
-- `getUserStake(address user)` - Gets actual stake amount from precompile (returns uint256)
+- `verifyStake(address user)` - Verifies user's stake amount from precompile (checks both stake and deltaStake) (returns bool)
+- `canUserReview(address user)` - Checks if user can submit reviews based on stake (checks both stake and deltaStake) (returns bool)
+- `getUserStake(address user)` - Gets actual stake amount from precompile (returns deltaStake if stake is 0, otherwise stake) (returns uint256)
 - `setValidatorId(uint64 _newValidatorId)` - Updates validator ID (only owner)
 - `setMinStakeAmount(uint256 _newMinStakeAmount)` - Updates minimum stake amount (only owner)
 - `getValidatorId()` - Returns current validator ID (view)
 - `getMinStakeAmount()` - Returns current minimum stake amount (view)
+
+**Important Note**: The contract checks both `stake` (index 0) and `deltaStake` (index 3) from Monad's staking precompile. This is because new stakes are stored in `deltaStake` and only moved to `stake` after epoch processing. The previous version only checked `stake`, causing valid stakes to be rejected.
 
 **State Variables**:
 - `uint64 public validatorId` - Current validator ID for staking
@@ -129,8 +133,11 @@ The Monad AI-Assisted Review System is a decentralized review platform that comb
 
 ### Staking Verification Process:
 1. ReviewStaking queries Monad's staking precompile via `getDelegator(validatorId, user)`
-2. Compares returned stake amount vs `minStakeAmount`
-3. Returns true/false for `canUserReview()` function
+2. Extracts both `stake` (index 0) and `deltaStake` (index 3) from the response
+3. Compares both values against `minStakeAmount` (returns true if either meets requirement)
+4. Returns true/false for `canUserReview()` function
+
+**Why Both Fields?**: Monad's staking precompile stores new stakes in `deltaStake` initially, and only moves them to `stake` after epoch processing. Checking both ensures users can review immediately after staking.
 
 ## Security Features
 
@@ -147,6 +154,16 @@ The Monad AI-Assisted Review System is a decentralized review platform that comb
 - **Chain ID**: 10143
 - **Deployer**: Contract owner with administrative privileges
 - **Verification**: All contracts deployed and integrated properly
+
+## Recent Updates
+
+### ReviewStaking Contract Fix (Latest)
+- **Issue**: Original contract (`0x51F7cbd74731976d834a67F156dBC387CCc59c1D`) only checked `stake` field from Monad's staking precompile
+- **Problem**: New stakes are stored in `deltaStake` (index 3) and only moved to `stake` (index 0) after epoch processing
+- **Impact**: Users with valid stakes in `deltaStake` were unable to submit reviews
+- **Solution**: Deployed new contract (`0xCd9352bFBCDfAB07EE8e664A64ECe191c1836180`) that checks both `stake` and `deltaStake`
+- **Result**: Users can now submit reviews immediately after staking
+- **Status**: ReviewPlatform has been updated to use the new staking contract
 
 ## Contract Inheritance
 

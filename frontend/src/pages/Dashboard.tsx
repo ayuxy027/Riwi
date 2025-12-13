@@ -6,6 +6,8 @@ import WriteReviewModal, { type ReviewSubmissionData } from "../components/Write
 import { TransactionToast } from "../components/TransactionToast";
 import { formatEther } from "viem";
 import type { Review } from "../services/blockchainService";
+import PropertyMarketplace from "../components/PropertyMarketplace";
+import type { Property } from "../data/mockProperties";
 
 // ============================================
 // Icons (Professional SVGs)
@@ -167,6 +169,7 @@ const ReviewHistoryItem = ({ review }: { review: Review }) => {
 const Dashboard = () => {
     const { user, blockchain, connectWallet, submitReview, stakeTokens, refreshUserData, isLoading, transaction, clearTransaction } = useApp();
     const [isReviewOpen, setIsReviewOpen] = useState(false);
+    const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
     const [isStakingOpen, setIsStakingOpen] = useState(false);
     const [stakeAmount, setStakeAmount] = useState("1");
     const [isStakingInProgress, setIsStakingInProgress] = useState(false);
@@ -177,10 +180,20 @@ const Dashboard = () => {
         }
     }, [user.connected, user.address, refreshUserData]);
 
+    const handleWriteReview = (property: Property) => {
+        setSelectedProperty(property);
+        setIsReviewOpen(true);
+    };
+
+    const handleCloseReviewModal = () => {
+        setIsReviewOpen(false);
+        setSelectedProperty(null);
+    };
+
     const handleReviewSubmit = async (reviewData: ReviewSubmissionData) => {
         try {
             await submitReview(reviewData.content);
-            setIsReviewOpen(false);
+            handleCloseReviewModal();
             // Data will refresh automatically via context
         } catch (error: unknown) {
             console.error("Failed to submit review:", error);
@@ -210,17 +223,12 @@ const Dashboard = () => {
                                 )}
                             </p>
                         </div>
-                        {user.connected && (
+                        {user.connected && blockchain.hasSufficientStake === false && (
                             <button
-                                onClick={() => setIsReviewOpen(true)}
-                                disabled={blockchain.hasSufficientStake === false}
-                                className={`px-6 py-3 rounded-xl font-medium shadow-lg transition-all flex items-center gap-2 ${
-                                    blockchain.hasSufficientStake !== false
-                                        ? "bg-[#6E54FF] text-white hover:shadow-[#6E54FF]/25 hover:-translate-y-0.5"
-                                        : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                                }`}
+                                onClick={() => setIsStakingOpen(true)}
+                                className="px-6 py-3 rounded-xl font-medium shadow-lg transition-all flex items-center gap-2 bg-[#6E54FF] text-white hover:shadow-[#6E54FF]/25 hover:-translate-y-0.5"
                             >
-                                <Icons.Pen /> Write New Review
+                                <Icons.Lock /> Stake to Review
                             </button>
                         )}
                     </div>
@@ -254,6 +262,14 @@ const Dashboard = () => {
                                         label="Amount Staked"
                                         value={`${(blockchain.stakedAmount || 0).toFixed(2)} MON`}
                                         icon={<Icons.Lock />}
+                                    />
+                                </div>
+
+                                {/* Property Marketplace */}
+                                <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+                                    <PropertyMarketplace 
+                                        onWriteReview={handleWriteReview}
+                                        disabled={blockchain.hasSufficientStake === false}
                                     />
                                 </div>
 
@@ -360,8 +376,9 @@ const Dashboard = () => {
 
             <WriteReviewModal
                 isOpen={isReviewOpen}
-                onClose={() => setIsReviewOpen(false)}
+                onClose={handleCloseReviewModal}
                 onSubmit={handleReviewSubmit}
+                selectedProperty={selectedProperty}
             />
             <TransactionToast transaction={transaction} onClose={clearTransaction} />
             

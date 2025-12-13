@@ -127,8 +127,9 @@ export async function getUserReputation(userAddress: Address): Promise<UserReput
 }
 
 // Get user's stake status
-// NOTE: The contract reads 'stake' (index 0) but Monad's precompile stores active stake in 'deltaStake' (index 3)
-// We need to read directly from the precompile to get accurate stake amounts
+// NOTE: Monad's staking precompile stores new stakes in 'deltaStake' (index 3) until epoch processing
+// We read directly from the precompile to get accurate stake amounts (both stake and deltaStake)
+// The NEW ReviewStaking contract also checks both fields, but we verify here for frontend validation
 export async function getUserStake(userAddress: Address): Promise<UserStake> {
   try {
     // Get validator ID and min stake from contract
@@ -364,8 +365,8 @@ export async function submitReview(content: string, walletClient: WalletClient, 
 
     console.log('Submitting review:', { content: content.substring(0, 50) + '...', userAddress });
 
-    // Check stake directly from precompile (same logic as getUserStake)
-    // The contract's canUserReview reads wrong field, so we check ourselves
+    // Check stake before submission (frontend validation)
+    // The contract will also verify via reviewStaking.canUserReview() which now checks both stake and deltaStake
     const stakeData = await getUserStake(userAddress);
     
     if (!stakeData.hasSufficientStake) {

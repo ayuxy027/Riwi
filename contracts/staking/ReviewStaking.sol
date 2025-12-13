@@ -45,13 +45,16 @@ contract ReviewStaking is Ownable {
     /**
      * @dev Function to verify a user's stake amount
      * Checks if the user has sufficient stake through Monad's staking precompile
+     * NOTE: Monad's staking precompile stores active stake in deltaStake (index 3) 
+     * when stake hasn't been processed yet. We check both stake and deltaStake.
      * @param user The address of the user to verify
      * @return bool indicating whether the user has sufficient stake
      */
     function verifyStake(address user) external returns (bool) {
-        (uint256 stakeAmount, , , , , , ) = STAKING_CONTRACT.getDelegator(validatorId, user);
+        (uint256 stakeAmount, , , uint256 deltaStake, , , ) = STAKING_CONTRACT.getDelegator(validatorId, user);
 
-        bool hasSufficientStake = stakeAmount >= minStakeAmount;
+        // Check both stake (processed) and deltaStake (pending activation)
+        bool hasSufficientStake = (stakeAmount >= minStakeAmount) || (deltaStake >= minStakeAmount);
         hasStake[user] = hasSufficientStake;
 
         if (hasSufficientStake) {
@@ -66,12 +69,16 @@ contract ReviewStaking is Ownable {
     /**
      * @dev Check if a user can submit reviews based on their stake
      * This function is called by the ReviewPlatform before accepting reviews
+     * NOTE: Monad's staking precompile stores active stake in deltaStake (index 3) 
+     * when stake hasn't been processed yet. We check both stake and deltaStake.
      * @param user The address of the user to check
      * @return bool indicating whether the user can submit reviews
      */
     function canUserReview(address user) external returns (bool) {
-        (uint256 stakeAmount, , , , , , ) = STAKING_CONTRACT.getDelegator(validatorId, user);
-        return stakeAmount >= minStakeAmount;
+        (uint256 stakeAmount, , , uint256 deltaStake, , , ) = STAKING_CONTRACT.getDelegator(validatorId, user);
+        // Check both stake (processed) and deltaStake (pending activation)
+        // deltaStake is the active stake that will be activated in the next epoch
+        return (stakeAmount >= minStakeAmount) || (deltaStake >= minStakeAmount);
     }
 
     /**
@@ -108,11 +115,13 @@ contract ReviewStaking is Ownable {
 
     /**
      * @dev Get the actual stake amount for a user from Monad's staking precompile
+     * NOTE: Returns the active stake (either stake or deltaStake, whichever is greater)
      * @param user The address of the user
      * @return The stake amount
      */
     function getUserStake(address user) external returns (uint256) {
-        (uint256 stakeAmount, , , , , , ) = STAKING_CONTRACT.getDelegator(validatorId, user);
-        return stakeAmount;
+        (uint256 stakeAmount, , , uint256 deltaStake, , , ) = STAKING_CONTRACT.getDelegator(validatorId, user);
+        // Return the active stake (deltaStake if stake is 0, otherwise stake)
+        return deltaStake > 0 ? deltaStake : stakeAmount;
     }
 }
