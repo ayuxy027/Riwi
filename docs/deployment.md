@@ -15,7 +15,7 @@ ReviewToken:        0x9Ce50706CD0F73bB5502b7AA0a8cD17D8513de83          # ERC-20
 ReputationSystem:   0xF158be31A900cA8B2Be13BBd22D9d81E64764DBC          # Reputation tracking
 ReviewStaking:      0xCd9352bFBCDfAB07EE8e664A64ECe191c1836180          # Staking verification (Updated)
 ReviewPlatform:     0x40C11dF88eEf1B1276978b750e315E49A929D10d          # Main orchestration
-TokenCashout:       [PENDING DEPLOYMENT]                                # RVT to MON cashout
+TokenCashout:       0x4044F6D5A7B675Dc2dA4be604E0a415b310EBF78          # RVT to MON cashout
 ```
 
 **Note**: ReviewStaking was updated to fix deltaStake checking. Previous address: `0x51F7cbd74731976d834a67F156dBC387CCc59c1D` (deprecated)
