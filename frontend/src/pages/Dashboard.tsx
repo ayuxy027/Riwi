@@ -2,307 +2,247 @@ import { useState } from "react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { useApp } from "../context/AppContext";
-import { getReputation, type ReputationData } from "../services/reputation";
-import {
-    getTierFromScore,
-    getScoreColor,
-    getScoreLabel,
-    type TierInfo
-} from "../services/api";
+import WriteReviewModal from "../components/WriteReviewModal";
+
+// ============================================
+// Types
+// ============================================
+
+interface ReviewActivity {
+    id: string;
+    product: string;
+    date: string;
+    qualityScore: number;
+    reward: number;
+    status: "Verified" | "Pending" | "Rejected";
+}
+
+interface UserStats {
+    totalReviews: number;
+    avgQualityScore: number;
+    tokensEarned: number;
+    stakedAmount: number;
+}
 
 // ============================================
 // Demo Data
 // ============================================
 
-const DEMO_REPUTATION_DATA: ReputationData = {
-    owner: "Demo User",
-    score: 850,
-    level: "Diamond",
-    lastUpdated: Date.now(),
-    badges: ["Early Adopter", "Community Leader", "Verified User", "Cross-Chain Pioneer"],
-    history: [
-        { date: "2024-01", score: 100 },
-        { date: "2024-03", score: 250 },
-        { date: "2024-06", score: 450 },
-        { date: "2024-09", score: 650 },
-        { date: "2024-12", score: 850 },
-    ],
+const DEMO_STATS: UserStats = {
+    totalReviews: 47,
+    avgQualityScore: 8.7,
+    tokensEarned: 2450,
+    stakedAmount: 500,
 };
 
+const INITIAL_HISTORY: ReviewActivity[] = [
+    { id: "1", product: "DeFi Exchange Pro", date: "2 hrs ago", qualityScore: 9.2, reward: 50, status: "Verified" },
+    { id: "2", product: "Monad Wallet", date: "1 day ago", qualityScore: 8.5, reward: 35, status: "Verified" },
+    { id: "3", product: "NFT Marketplace", date: "2 days ago", qualityScore: 7.8, reward: 20, status: "Verified" },
+    { id: "4", product: "Crypto Game X", date: "3 days ago", qualityScore: 0, reward: 0, status: "Pending" },
+    { id: "5", product: "Yield Farm Alpha", date: "1 week ago", qualityScore: 4.2, reward: 0, status: "Rejected" },
+];
+
 // ============================================
-// Score Card Component
+// Components
 // ============================================
 
-const ScoreCard = ({ score, tier }: { score: number; tier: TierInfo }) => {
-    const percentage = (score / 1000) * 100;
+const StatCard = ({ label, value, icon, trend }: { label: string; value: string; icon: string; trend?: string }) => (
+    <div className="bg-white rounded-2xl p-6 border border-rose-100 shadow-sm hover:shadow-md transition-shadow">
+        <div className="flex justify-between items-start mb-4">
+            <div className="w-12 h-12 bg-rose-50 rounded-xl flex items-center justify-center text-2xl">
+                {icon}
+            </div>
+            {trend && (
+                <span className="px-2 py-1 bg-green-50 text-green-700 text-xs font-semibold rounded-lg flex items-center gap-1">
+                    {trend} ↗
+                </span>
+            )}
+        </div>
+        <h3 className="text-3xl font-bold text-rose-900 mb-1">{value}</h3>
+        <p className="text-rose-600 text-sm font-medium">{label}</p>
+    </div>
+);
 
-    return (
-        <div className="bg-gradient-to-br from-white to-rose-50 rounded-2xl shadow-xl p-8 border border-rose-100">
-            <div className="text-center">
-                <p className="text-sm font-medium text-rose-600 mb-2">Overall Reputation Score</p>
-                <div className="relative w-40 h-40 mx-auto mb-4">
-                    <svg className="w-full h-full transform -rotate-90">
-                        <circle
-                            cx="80"
-                            cy="80"
-                            r="70"
-                            stroke="currentColor"
-                            strokeWidth="12"
-                            fill="none"
-                            className="text-rose-100"
-                        />
-                        <circle
-                            cx="80"
-                            cy="80"
-                            r="70"
-                            stroke="url(#gradient)"
-                            strokeWidth="12"
-                            fill="none"
-                            strokeLinecap="round"
-                            strokeDasharray={`${percentage * 4.4} 440`}
-                        />
-                        <defs>
-                            <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                                <stop offset="0%" stopColor="#f43f5e" />
-                                <stop offset="100%" stopColor="#ec4899" />
-                            </linearGradient>
-                        </defs>
-                    </svg>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <span className="text-4xl font-bold text-rose-900">{score}</span>
-                        <span className="text-sm text-rose-600">/1000</span>
-                    </div>
-                </div>
-                <div className="flex items-center justify-center gap-2">
-                    <span className="text-3xl">{tier.badgeEmoji}</span>
-                    <span className={`text-lg font-bold ${getScoreColor(score)}`}>
-                        {getScoreLabel(score)} - {tier.name}
-                    </span>
-                </div>
+const ReviewHistoryItem = ({ review }: { review: ReviewActivity }) => (
+    <div className="flex items-center justify-between p-4 bg-white border border-rose-100 rounded-xl hover:bg-rose-50/50 transition-colors">
+        <div className="flex items-center gap-4">
+            <div className={`w-2 h-12 rounded-full ${review.status === "Verified" ? "bg-green-500" :
+                review.status === "Pending" ? "bg-yellow-500" : "bg-red-500"
+                }`} />
+            <div>
+                <h4 className="font-semibold text-rose-900">{review.product}</h4>
+                <p className="text-xs text-rose-500">{review.date}</p>
             </div>
         </div>
-    );
-};
-
-// ============================================
-// Badges Component
-// ============================================
-
-const BadgesSection = ({ badges }: { badges: string[] }) => (
-    <div className="bg-white rounded-2xl shadow-lg p-6 border border-rose-100">
-        <h3 className="text-lg font-semibold text-rose-900 mb-4">🏆 Achievements</h3>
-        <div className="flex flex-wrap gap-2">
-            {badges.map((badge, index) => (
-                <span
-                    key={badge}
-                    className="px-3 py-1.5 bg-gradient-to-r from-rose-100 to-pink-100 text-rose-800 rounded-full text-sm font-medium border border-rose-200"
-                    style={{ animationDelay: `${index * 100}ms` }}
-                >
-                    ✨ {badge}
+        <div className="text-right">
+            <div className="flex items-center gap-2 justify-end mb-1">
+                <span className={`px-2 py-0.5 rounded text-xs font-bold ${review.status === "Verified" ? "bg-green-100 text-green-700" :
+                    review.status === "Pending" ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"
+                    }`}>
+                    {review.status}
                 </span>
-            ))}
+            </div>
+            <p className="text-sm font-medium text-rose-800">
+                AI Score: <span className="font-bold">{review.qualityScore > 0 ? review.qualityScore : "-"}</span>
+            </p>
+            {review.reward > 0 && (
+                <p className="text-xs text-rose-600 font-semibold">+{review.reward} MR</p>
+            )}
         </div>
     </div>
 );
 
 // ============================================
-// Progress History Component
-// ============================================
-
-const ProgressHistory = ({ history }: { history: { date: string; score: number }[] }) => (
-    <div className="bg-white rounded-2xl shadow-lg p-6 border border-rose-100">
-        <h3 className="text-lg font-semibold text-rose-900 mb-4">📈 Score History</h3>
-        <div className="space-y-3">
-            {history.map((entry, index) => (
-                <div key={entry.date} className="flex items-center gap-4">
-                    <span className="text-sm text-rose-600 w-20">{entry.date}</span>
-                    <div className="flex-1 h-2 bg-rose-100 rounded-full overflow-hidden">
-                        <div
-                            className="h-full bg-gradient-to-r from-rose-500 to-pink-500 rounded-full transition-all duration-500"
-                            style={{
-                                width: `${(entry.score / 1000) * 100}%`,
-                                animationDelay: `${index * 100}ms`
-                            }}
-                        />
-                    </div>
-                    <span className="text-sm font-medium text-rose-900 w-12 text-right">{entry.score}</span>
-                </div>
-            ))}
-        </div>
-    </div>
-);
-
-// ============================================
-// Quick Stats Component
-// ============================================
-
-const QuickStats = ({ data }: { data: ReputationData }) => {
-    const stats = [
-        { label: "Current Level", value: data.level, icon: "🎯" },
-        { label: "Total Badges", value: data.badges.length.toString(), icon: "🏅" },
-        { label: "Last Updated", value: new Date(data.lastUpdated).toLocaleDateString(), icon: "📅" },
-        { label: "Growth Rate", value: "+15%", icon: "📊" },
-    ];
-
-    return (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {stats.map((stat) => (
-                <div key={stat.label} className="bg-white rounded-xl p-4 border border-rose-100 shadow-sm text-center hover:shadow-md transition-shadow">
-                    <span className="text-2xl mb-2 block">{stat.icon}</span>
-                    <p className="text-lg font-bold text-rose-900">{stat.value}</p>
-                    <p className="text-xs text-rose-600">{stat.label}</p>
-                </div>
-            ))}
-        </div>
-    );
-};
-
-// ============================================
-// Dashboard Page Component (No Web3)
+// Dashboard Page
 // ============================================
 
 const Dashboard = () => {
     const { isDemoMode, enableDemoMode, user } = useApp();
-    const [reputationData, setReputationData] = useState<ReputationData | null>(
-        isDemoMode ? DEMO_REPUTATION_DATA : null
-    );
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [history, setHistory] = useState<ReviewActivity[]>(INITIAL_HISTORY);
+    const [isReviewOpen, setIsReviewOpen] = useState(false);
 
-    const handleScan = async () => {
-        setIsLoading(true);
-        setError(null);
+    // In a real app, these would come from an API/Contract
+    const stats = isDemoMode ? DEMO_STATS : null;
 
-        try {
-            const data = await getReputation(user.address);
-            setReputationData(data);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : "Failed to fetch reputation");
-        } finally {
-            setIsLoading(false);
-        }
+    const handleReviewSubmit = (reviewData: any) => {
+        const newReview: ReviewActivity = {
+            id: Date.now().toString(),
+            product: reviewData.product,
+            date: "Just now",
+            qualityScore: reviewData.qualityScore,
+            reward: 0, // Pending
+            status: "Pending"
+        };
+        setHistory([newReview, ...history]);
     };
-
-    const handleRescan = () => {
-        setReputationData(null);
-        setError(null);
-    };
-
-    const tier = reputationData ? getTierFromScore(reputationData.score) : null;
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-rose-50 via-white to-pink-50">
             <Navbar />
 
             <main className="pt-24 pb-16 px-6">
-                <div className="max-w-4xl mx-auto">
-                    {/* Page Header */}
-                    <div className="text-center mb-8">
-                        <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-3">
-                            <span className="bg-gradient-to-r from-rose-900 via-rose-800 to-pink-900 bg-clip-text text-transparent">
-                                Reputation Dashboard
-                            </span>
-                        </h1>
-                        <p className="text-rose-700 max-w-2xl mx-auto">
-                            Discover your unified cross-chain reputation score and achievements
-                        </p>
+                <div className="max-w-6xl mx-auto">
+                    {/* Header */}
+                    <div className="flex flex-col md:flex-row items-center justify-between mb-8 gap-4">
+                        <div>
+                            <h1 className="text-3xl font-bold text-rose-900 mb-2">Reviewer Dashboard</h1>
+                            <p className="text-rose-600">Welcome back, {user.name || "Guest"}! Here is your impact overview.</p>
+                        </div>
+                        {!isDemoMode ? (
+                            <button
+                                onClick={enableDemoMode}
+                                className="px-6 py-3 bg-gradient-to-r from-rose-500 to-pink-500 text-white rounded-xl font-medium shadow-lg hover:shadow-rose-200/50 transition-all"
+                            >
+                                Enable Demo Mode
+                            </button>
+                        ) : (
+                            <button
+                                onClick={() => setIsReviewOpen(true)}
+                                className="px-6 py-3 bg-rose-900 text-white rounded-xl font-medium shadow-lg hover:bg-rose-800 transition-all flex items-center gap-2"
+                            >
+                                <span>✍️</span> Write New Review
+                            </button>
+                        )}
                     </div>
 
-                    {!isDemoMode && !reputationData && (
-                        <div className="mb-8 p-6 bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-2xl text-center">
-                            <p className="text-amber-900 font-medium mb-3">
-                                🧪 Try Demo Mode to explore all features
+                    {isDemoMode && stats ? (
+                        <div className="space-y-8 animate-fade-in-up">
+                            {/* Stats Grid */}
+                            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                <StatCard
+                                    label="Total Reviews"
+                                    value={(stats.totalReviews + (history.length - INITIAL_HISTORY.length)).toString()}
+                                    icon="📝"
+                                    trend="+4 this week"
+                                />
+                                <StatCard
+                                    label="AI Quality Score"
+                                    value={stats.avgQualityScore.toString()}
+                                    icon="🤖"
+                                    trend="Top 10%"
+                                />
+                                <StatCard
+                                    label="Tokens Earned"
+                                    value={`${stats.tokensEarned} MR`}
+                                    icon="💰"
+                                />
+                                <StatCard
+                                    label="Amount Staked"
+                                    value={`${stats.stakedAmount} MR`}
+                                    icon="🔒"
+                                />
+                            </div>
+
+                            <div className="grid lg:grid-cols-3 gap-8">
+                                {/* Recent Activity */}
+                                <div className="lg:col-span-2 space-y-6">
+                                    <div className="bg-white rounded-2xl p-6 border border-rose-100 shadow-sm">
+                                        <h2 className="text-xl font-bold text-rose-900 mb-6">Recent Reviews</h2>
+                                        <div className="space-y-4">
+                                            {history.map((review) => (
+                                                <ReviewHistoryItem key={review.id} review={review} />
+                                            ))}
+                                        </div>
+                                        <button className="w-full mt-6 py-3 text-rose-600 font-medium hover:bg-rose-50 rounded-xl transition-colors">
+                                            View All Activity
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Quick Actions & Staking Info */}
+                                <div className="space-y-6">
+                                    {/* Staking Card */}
+                                    <div className="bg-gradient-to-br from-rose-900 to-pink-900 rounded-2xl p-6 text-white shadow-xl relative overflow-hidden">
+                                        <div className="absolute top-0 right-0 p-4 opacity-10">
+                                            <svg className="w-32 h-32" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zm0 9l2.5-1.25L12 8.5l-2.5 1.25L12 11zm0 2.5l-5-2.5-5 2.5L12 22l10-8.5-5-2.5-5 2.5z" /></svg>
+                                        </div>
+                                        <h3 className="text-lg font-bold mb-2 relative z-10">Staking Status</h3>
+                                        <div className="text-3xl font-bold mb-4 relative z-10">{stats.stakedAmount} MR</div>
+                                        <p className="text-rose-100 text-sm mb-6 relative z-10">
+                                            Your stake ensures review authenticity. Maintain quality to avoid slashing.
+                                        </p>
+                                        <button className="w-full py-3 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-xl font-medium transition-all relative z-10 border border-white/10">
+                                            Manage Stake
+                                        </button>
+                                    </div>
+
+                                    {/* AI Insights (Mock) */}
+                                    <div className="bg-rose-50 rounded-2xl p-6 border border-rose-200">
+                                        <h3 className="text-lg font-bold text-rose-900 mb-3">💡 AI Tip</h3>
+                                        <p className="text-rose-700 text-sm leading-relaxed">
+                                            Your reviews containing specific usage details (e.g., transaction speeds, fees) receive <strong>15% higher rewards</strong> on average. Keep it up!
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="text-center py-20 bg-white rounded-3xl border border-rose-100 shadow-sm">
+                            <div className="w-24 h-24 bg-rose-50 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl">
+                                🔒
+                            </div>
+                            <h2 className="text-2xl font-bold text-rose-900 mb-4">Dashboard Locked</h2>
+                            <p className="text-rose-600 mb-8 max-w-md mx-auto">
+                                Enable demo mode or connect your wallet to view your reputation stats and review history.
                             </p>
                             <button
                                 onClick={enableDemoMode}
-                                className="px-6 py-2.5 bg-gradient-to-r from-amber-500 to-yellow-500 text-white rounded-xl hover:from-amber-600 hover:to-yellow-600 transition-all font-medium shadow-lg shadow-amber-200/50"
+                                className="px-8 py-4 bg-gradient-to-r from-rose-500 to-pink-500 text-white rounded-xl font-medium shadow-lg hover:scale-105 transition-all"
                             >
                                 Enable Demo Mode
                             </button>
                         </div>
                     )}
-
-                    {/* Main Content */}
-                    {reputationData && tier ? (
-                        <div className="space-y-6 animate-fade-in-up">
-                            {/* Quick Stats */}
-                            <QuickStats data={reputationData} />
-
-                            {/* Score and Badges Grid */}
-                            <div className="grid md:grid-cols-2 gap-6">
-                                <ScoreCard score={reputationData.score} tier={tier} />
-                                <BadgesSection badges={reputationData.badges} />
-                            </div>
-
-                            {/* Progress History */}
-                            <ProgressHistory history={reputationData.history} />
-
-                            {/* Actions */}
-                            <div className="flex justify-center gap-4">
-                                <button
-                                    onClick={handleRescan}
-                                    className="px-6 py-3 bg-white border-2 border-rose-200 text-rose-700 rounded-xl hover:bg-rose-50 hover:border-rose-300 transition-all font-medium"
-                                >
-                                    🔄 Refresh Data
-                                </button>
-                                <button
-                                    onClick={() => window.location.href = "/profile"}
-                                    className="px-6 py-3 bg-gradient-to-r from-rose-500 to-pink-500 text-white rounded-xl hover:from-rose-600 hover:to-pink-600 transition-all font-medium shadow-lg shadow-rose-200/50"
-                                >
-                                    View Full Profile →
-                                </button>
-                            </div>
-                        </div>
-                    ) : (
-                        /* No Data State */
-                        <div className="bg-white rounded-2xl shadow-xl p-12 border border-rose-100 text-center">
-                            <div className="w-24 h-24 bg-gradient-to-br from-rose-100 to-pink-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                                <svg className="w-12 h-12 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                                </svg>
-                            </div>
-                            <h2 className="text-2xl font-bold text-rose-900 mb-3">
-                                Check Your Reputation
-                            </h2>
-                            <p className="text-rose-600 mb-8 max-w-md mx-auto">
-                                Get insights into your cross-chain activity and earn reputation badges
-                            </p>
-                            <button
-                                onClick={handleScan}
-                                disabled={isLoading}
-                                className="px-8 py-4 bg-gradient-to-r from-rose-500 to-pink-500 text-white rounded-xl hover:from-rose-600 hover:to-pink-600 transition-all font-medium shadow-lg shadow-rose-200/50 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                {isLoading ? (
-                                    <span className="flex items-center gap-2">
-                                        <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                                        </svg>
-                                        Scanning...
-                                    </span>
-                                ) : (
-                                    "🔍 Scan My Reputation"
-                                )}
-                            </button>
-                        </div>
-                    )}
-
-                    {/* Error Display */}
-                    {error && (
-                        <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-xl text-center">
-                            <p className="text-red-700">{error}</p>
-                            <button
-                                onClick={() => setError(null)}
-                                className="mt-2 text-sm text-red-600 hover:text-red-800 underline"
-                            >
-                                Dismiss
-                            </button>
-                        </div>
-                    )}
                 </div>
             </main>
-
             <Footer />
+
+            <WriteReviewModal
+                isOpen={isReviewOpen}
+                onClose={() => setIsReviewOpen(false)}
+                onSubmit={handleReviewSubmit}
+            />
         </div>
     );
 };

@@ -28,10 +28,10 @@ const Navbar = () => {
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 group">
             <div className="w-8 h-8 bg-gradient-to-br from-rose-900 to-pink-900 rounded-full flex items-center justify-center group-hover:from-rose-800 group-hover:to-pink-800 transition-all duration-300">
-              <span className="text-rose-50 font-bold text-sm">CR</span>
+              <span className="text-rose-50 font-bold text-sm">MR</span>
             </div>
             <span className="font-semibold text-rose-900 tracking-tight hidden sm:block group-hover:text-rose-950 transition-colors">
-              ChainRepute
+              MonadReview
             </span>
           </Link>
 
@@ -42,8 +42,8 @@ const Navbar = () => {
                 key={link.path}
                 to={link.path}
                 className={`text-sm px-3 py-1.5 rounded-full transition-all duration-300 ease-out ${isActive(link.path)
-                    ? "bg-rose-100/70 text-rose-900 font-medium"
-                    : "text-rose-700 hover:bg-rose-100/50 hover:text-rose-900"
+                  ? "bg-rose-100/70 text-rose-900 font-medium"
+                  : "text-rose-700 hover:bg-rose-100/50 hover:text-rose-900"
                   }`}
               >
                 {link.label}
@@ -72,8 +72,8 @@ const Navbar = () => {
               <button
                 onClick={() => setShowMenu(!showMenu)}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-full hover:shadow-md transition-all ${isDemoMode
-                    ? "bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200"
-                    : "bg-gradient-to-r from-rose-100 to-pink-100 border border-rose-200"
+                  ? "bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200"
+                  : "bg-gradient-to-r from-rose-100 to-pink-100 border border-rose-200"
                   }`}
               >
                 <div className="w-6 h-6 bg-gradient-to-br from-rose-400 to-pink-500 rounded-full flex items-center justify-center">
@@ -168,8 +168,8 @@ const Navbar = () => {
                   to={link.path}
                   onClick={() => setMobileMenuOpen(false)}
                   className={`block text-sm px-4 py-2.5 rounded-xl transition-all duration-300 ${isActive(link.path)
-                      ? "bg-rose-100 text-rose-900 font-medium"
-                      : "text-rose-700 hover:bg-rose-50 hover:text-rose-900"
+                    ? "bg-rose-100 text-rose-900 font-medium"
+                    : "text-rose-700 hover:bg-rose-50 hover:text-rose-900"
                     }`}
                 >
                   {link.label}

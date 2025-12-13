@@ -1,267 +1,86 @@
-import { useState, useMemo } from "react";
-import { Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
-import {
-    getTierFromScore,
-    REWARD_TIERS,
-    type TierInfo,
-    type ChainScoreBreakdown,
-} from "../services/api";
-import { useApp, truncateAddress } from "../context/AppContext";
+import { useApp } from "../context/AppContext";
 
 // ============================================
-// Demo Data for Elite User Profile
+// Types
 // ============================================
 
-const DEMO_PROFILE = {
-    overallScore: 912,
-    stellar: {
-        address: "GBZXN7PIRZGNMHGA7MUUUF4GWPY5AYPV6LY4UV2GL6VJGIQRXFDNMADI",
-        score: 467,
-        scoreBreakdown: {
-            volumeScore: 95,
-            uniqueRecipientsScore: 88,
-            frequencyScore: 92,
-            accountAgeScore: 98,
-            diversityScore: 94,
-        },
-        stats: {
-            transactions: 1247,
-            volume: "125,430 XLM",
-            accountAge: "2+ years",
-        },
-    },
-    polkadot: {
-        address: "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
-        score: 445,
-        scoreBreakdown: {
-            volumeScore: 87,
-            uniqueRecipientsScore: 92,
-            frequencyScore: 85,
-            accountAgeScore: 96,
-            diversityScore: 85,
-        },
-        stats: {
-            votes: 45,
-            staked: "12,500 DOT",
-            nominations: 8,
-        },
-    },
-    badges: ["Early Adopter", "Cross-Chain Pioneer", "Governance Champion", "Diamond Trader", "Community Leader"],
-    joinedDate: "2022-03-15",
+interface ProfileStats {
+    reputationScore: number;
+    rank: string;
+    authScore: number; // 0-100
+    qualityScore: number; // 0-100
+    communityScore: number; // 0-100
+    badges: string[];
+    totalReviews: number;
+    helpfulVotes: number;
+    disputesWon: number;
+}
+
+const DEMO_PROFILE_STATS: ProfileStats = {
+    reputationScore: 850,
+    rank: "Expert Reviewer",
+    authScore: 98,
+    qualityScore: 94,
+    communityScore: 88,
+    badges: ["Monad Verified", "Top 1%", "Quality Expert", "Early Adopter"],
+    totalReviews: 124,
+    helpfulVotes: 890,
+    disputesWon: 3,
 };
 
 // ============================================
-// Score Ring Component
+// Components
 // ============================================
 
-const ScoreRing = ({
-    score,
-    maxScore = 1000,
-    size = "large"
-}: {
-    score: number;
-    maxScore?: number;
-    size?: "small" | "large"
-}) => {
-    const percentage = (score / maxScore) * 100;
-    const radius = size === "large" ? 70 : 40;
+const ScoreRing = ({ score, label, color }: { score: number; label: string; color: string }) => {
+    const radius = 30;
     const circumference = 2 * Math.PI * radius;
-    const strokeDasharray = (percentage / 100) * circumference;
+    const offset = circumference - (score / 100) * circumference;
 
     return (
-        <div className={`relative ${size === "large" ? "w-40 h-40" : "w-24 h-24"}`}>
-            <svg className="w-full h-full transform -rotate-90">
-                <circle
-                    cx="50%"
-                    cy="50%"
-                    r={radius}
-                    stroke="currentColor"
-                    strokeWidth={size === "large" ? 12 : 8}
-                    fill="none"
-                    className="text-rose-100"
-                />
-                <circle
-                    cx="50%"
-                    cy="50%"
-                    r={radius}
-                    stroke="url(#scoreGradient)"
-                    strokeWidth={size === "large" ? 12 : 8}
-                    fill="none"
-                    strokeLinecap="round"
-                    strokeDasharray={`${strokeDasharray} ${circumference}`}
-                />
-                <defs>
-                    <linearGradient id="scoreGradient">
-                        <stop offset="0%" stopColor="#f43f5e" />
-                        <stop offset="100%" stopColor="#ec4899" />
-                    </linearGradient>
-                </defs>
-            </svg>
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className={`font-bold text-rose-900 ${size === "large" ? "text-3xl" : "text-xl"}`}>
-                    {score}
-                </span>
-                <span className={`text-rose-500 ${size === "large" ? "text-sm" : "text-xs"}`}>
-                    /{maxScore}
-                </span>
-            </div>
-        </div>
-    );
-};
-
-// ============================================
-// Tier Progress Component
-// ============================================
-
-const TierProgress = ({
-    currentScore,
-    currentTier
-}: {
-    currentScore: number;
-    currentTier: TierInfo
-}) => {
-    const nextTier = REWARD_TIERS.find((t) => t.tier === currentTier.tier + 1);
-    const progress = ((currentScore - currentTier.minScore) / (currentTier.maxScore - currentTier.minScore)) * 100;
-
-    return (
-        <div className="bg-white rounded-2xl p-6 shadow-lg border border-rose-100">
-            <h3 className="text-lg font-semibold text-rose-900 mb-4">Tier Progress</h3>
-            <div className="flex items-center gap-4 mb-3">
-                <div className="flex items-center gap-2">
-                    <span className="text-2xl">{currentTier.badgeEmoji}</span>
-                    <span className="font-medium text-gray-900">{currentTier.name}</span>
-                </div>
-                <div className="flex-1 h-3 bg-rose-100 rounded-full overflow-hidden">
-                    <div
-                        className="h-full bg-gradient-to-r from-rose-500 to-pink-500 rounded-full transition-all duration-500"
-                        style={{ width: `${Math.min(progress, 100)}%` }}
+        <div className="flex flex-col items-center">
+            <div className="relative w-24 h-24 mb-2">
+                <svg className="w-full h-full transform -rotate-90">
+                    <circle cx="50%" cy="50%" r={radius} stroke="#f3f4f6" strokeWidth="8" fill="none" />
+                    <circle
+                        cx="50%"
+                        cy="50%"
+                        r={radius}
+                        stroke={color}
+                        strokeWidth="8"
+                        fill="none"
+                        strokeLinecap="round"
+                        strokeDasharray={circumference}
+                        strokeDashoffset={offset}
+                        className="transition-all duration-1000 ease-out"
                     />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-xl font-bold text-gray-800">{score}</span>
                 </div>
-                {nextTier && (
-                    <div className="flex items-center gap-2">
-                        <span className="text-2xl">{nextTier.badgeEmoji}</span>
-                        <span className="font-medium text-gray-400">{nextTier.name}</span>
-                    </div>
-                )}
             </div>
-            {nextTier && (
-                <p className="text-sm text-rose-600 text-center">
-                    {nextTier.minScore - currentScore} points to reach {nextTier.name} tier
-                </p>
-            )}
+            <p className="text-sm font-medium text-gray-600">{label}</p>
         </div>
     );
 };
 
-// ============================================
-// Chain Stats Card
-// ============================================
-
-const ChainStatsCard = ({
-    chain,
-    address,
-    score,
-    breakdown,
-    stats,
-}: {
-    chain: "stellar" | "polkadot";
-    address: string;
-    score: number;
-    breakdown: ChainScoreBreakdown;
-    stats: Record<string, string | number>;
-}) => {
-    const chainConfig = {
-        stellar: {
-            name: "Stellar",
-            color: "from-blue-500 to-indigo-600",
-            bgColor: "from-blue-50 to-indigo-50",
-            icon: "⭐",
-        },
-        polkadot: {
-            name: "Polkadot",
-            color: "from-pink-500 to-purple-600",
-            bgColor: "from-pink-50 to-purple-50",
-            icon: "🔴",
-        },
-    };
-
-    const config = chainConfig[chain];
-
-    return (
-        <div className={`bg-gradient-to-br ${config.bgColor} rounded-2xl p-6 border border-gray-100`}>
-            <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 bg-gradient-to-br ${config.color} rounded-xl flex items-center justify-center shadow-lg`}>
-                        <span className="text-xl">{config.icon}</span>
-                    </div>
-                    <div>
-                        <h3 className="font-semibold text-gray-900">{config.name}</h3>
-                        <code className="text-xs text-gray-500">{truncateAddress(address, 8, 6)}</code>
-                    </div>
-                </div>
-                <ScoreRing score={score} maxScore={500} size="small" />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 mb-4">
-                {Object.entries(stats).map(([key, value]) => (
-                    <div key={key} className="bg-white/60 rounded-xl p-3 text-center">
-                        <p className="text-lg font-bold text-gray-900">{value}</p>
-                        <p className="text-xs text-gray-500 capitalize">{key.replace(/([A-Z])/g, " $1")}</p>
-                    </div>
-                ))}
-            </div>
-
-            <div className="space-y-2">
-                <p className="text-xs font-semibold text-gray-600 uppercase">Score Breakdown</p>
-                {Object.entries(breakdown).map(([key, value]) => (
-                    <div key={key} className="flex items-center gap-2">
-                        <span className="text-xs text-gray-500 w-28 capitalize">{key.replace("Score", "")}</span>
-                        <div className="flex-1 h-2 bg-white/60 rounded-full overflow-hidden">
-                            <div
-                                className={`h-full bg-gradient-to-r ${config.color} rounded-full`}
-                                style={{ width: `${value}%` }}
-                            />
-                        </div>
-                        <span className="text-xs font-medium text-gray-700 w-8">{value}</span>
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
-};
-
-// ============================================
-// Badges Grid
-// ============================================
-
-const BadgesGrid = ({ badges }: { badges: string[] }) => (
-    <div className="bg-white rounded-2xl p-6 shadow-lg border border-rose-100">
-        <h3 className="text-lg font-semibold text-rose-900 mb-4">🏆 Achievements</h3>
-        <div className="flex flex-wrap gap-2">
-            {badges.map((badge) => (
-                <span
-                    key={badge}
-                    className="px-4 py-2 bg-gradient-to-r from-rose-100 to-pink-100 text-rose-800 rounded-full text-sm font-medium border border-rose-200 hover:scale-105 transition-transform cursor-default"
-                >
-                    ✨ {badge}
-                </span>
-            ))}
-        </div>
-    </div>
+const Badge = ({ name }: { name: string }) => (
+    <span className="px-3 py-1.5 bg-gradient-to-r from-rose-100 to-pink-100 text-rose-800 rounded-lg text-sm font-medium border border-rose-200">
+        🏆 {name}
+    </span>
 );
 
+
+
 // ============================================
-// Profile Page Component
+// Profile Page
 // ============================================
 
 const Profile = () => {
-    const { isDemoMode, user, enableDemoMode } = useApp();
-    const [showAllPerks, setShowAllPerks] = useState(false);
-
-    const profileData = isDemoMode ? DEMO_PROFILE : null;
-    const currentTier = profileData ? getTierFromScore(profileData.overallScore) : null;
+    const { isDemoMode, enableDemoMode, user } = useApp();
+    const stats = isDemoMode ? DEMO_PROFILE_STATS : null;
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-rose-50 via-white to-pink-50">
@@ -269,119 +88,98 @@ const Profile = () => {
 
             <main className="pt-24 pb-16 px-6">
                 <div className="max-w-5xl mx-auto">
-                    {/* Page Header */}
-                    <div className="text-center mb-8">
-                        <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-3">
-                            <span className="bg-gradient-to-r from-rose-900 via-rose-800 to-pink-900 bg-clip-text text-transparent">
-                                Your Profile
-                            </span>
-                        </h1>
-                        <p className="text-rose-700 max-w-2xl mx-auto">
-                            View your complete cross-chain reputation profile and achievements
-                        </p>
-                    </div>
-
                     {!isDemoMode ? (
-                        <div className="bg-white rounded-2xl shadow-xl p-12 border border-rose-100 text-center">
-                            <div className="w-24 h-24 bg-gradient-to-br from-rose-100 to-pink-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                                <svg className="w-12 h-12 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                </svg>
-                            </div>
-                            <h2 className="text-2xl font-bold text-rose-900 mb-3">
-                                Enable Demo Mode
-                            </h2>
-                            <p className="text-rose-600 mb-8 max-w-md mx-auto">
-                                Enable demo mode to explore your profile and see all features in action
-                            </p>
-                            <button
-                                onClick={enableDemoMode}
-                                className="px-8 py-4 bg-gradient-to-r from-rose-500 to-pink-500 text-white rounded-xl hover:from-rose-600 hover:to-pink-600 transition-all font-medium shadow-lg shadow-rose-200/50"
-                            >
-                                🧪 Enable Demo Mode
+                        <div className="text-center py-20 bg-white rounded-3xl border border-rose-100 shadow-sm max-w-2xl mx-auto mt-10">
+                            <h2 className="text-xl font-bold text-rose-900 mb-4">View Public Profile</h2>
+                            <button onClick={enableDemoMode} className="px-8 py-3 bg-rose-500 text-white rounded-xl font-medium hover:bg-rose-600">
+                                View Demo Profile
                             </button>
                         </div>
-                    ) : profileData && currentTier ? (
-                        <div className="space-y-6">
+                    ) : stats && (
+                        <div className="space-y-8 animate-fade-in-up">
                             {/* Profile Header */}
-                            <div className="bg-white rounded-2xl shadow-xl p-8 border border-rose-100">
-                                <div className="flex flex-col md:flex-row items-center gap-8">
-                                    <div className="relative">
-                                        <ScoreRing score={profileData.overallScore} size="large" />
-                                        <div className="absolute -bottom-2 -right-2 w-12 h-12 bg-gradient-to-br from-rose-400 to-pink-500 rounded-full flex items-center justify-center shadow-lg">
-                                            <span className="text-2xl">{currentTier.badgeEmoji}</span>
+                            <div className="bg-white rounded-3xl shadow-xl border border-rose-100 overflow-hidden">
+                                <div className="h-32 bg-gradient-to-r from-rose-900 to-pink-900"></div>
+                                <div className="px-8 pb-8 relative">
+                                    <div className="flex flex-col md:flex-row items-end md:items-center -mt-12 mb-6 gap-6">
+                                        <div className="w-24 h-24 bg-rose-500 rounded-2xl border-4 border-white shadow-lg flex items-center justify-center text-4xl text-white font-bold">
+                                            {user.name.charAt(0)}
+                                        </div>
+                                        <div className="flex-1">
+                                            <h1 className="text-2xl font-bold text-gray-900">{user.name}</h1>
+                                            <p className="text-rose-600 font-medium">{stats.rank}</p>
+                                        </div>
+                                        <div className="bg-rose-50 px-4 py-2 rounded-xl border border-rose-200">
+                                            <p className="text-xs text-rose-600 uppercase tracking-wide mb-1">Total Reputation Score</p>
+                                            <p className="text-3xl font-bold text-rose-900">{stats.reputationScore}</p>
                                         </div>
                                     </div>
-                                    <div className="text-center md:text-left">
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <h2 className="text-2xl font-bold text-gray-900">{user.name}</h2>
-                                            <span className="px-3 py-1 bg-gradient-to-r from-rose-100 to-pink-100 text-rose-700 rounded-full text-sm font-medium">
-                                                {currentTier.name} Tier
-                                            </span>
-                                        </div>
-                                        <p className="text-gray-500 mb-4">
-                                            Member since {new Date(profileData.joinedDate).toLocaleDateString("en-US", { year: "numeric", month: "long" })}
-                                        </p>
-                                        <div className="flex flex-wrap gap-2">
-                                            {profileData.badges.slice(0, 3).map((badge) => (
-                                                <span key={badge} className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs">
-                                                    {badge}
-                                                </span>
-                                            ))}
-                                            {profileData.badges.length > 3 && (
-                                                <span className="px-3 py-1 bg-rose-100 text-rose-700 rounded-full text-xs">
-                                                    +{profileData.badges.length - 3} more
-                                                </span>
-                                            )}
-                                        </div>
+
+                                    {/* Breakdown Scores */}
+                                    <div className="grid grid-cols-3 gap-4 border-t border-gray-100 pt-8">
+                                        <ScoreRing score={stats.authScore} label="Authenticity" color="#10b981" />
+                                        <ScoreRing score={stats.qualityScore} label="Review Quality" color="#8b5cf6" />
+                                        <ScoreRing score={stats.communityScore} label="Community Impact" color="#f43f5e" />
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Tier Progress */}
-                            <TierProgress currentScore={profileData.overallScore} currentTier={currentTier} />
+                            <div className="grid md:grid-cols-3 gap-8">
+                                {/* Left Column: Badges & About */}
+                                <div className="space-y-6">
+                                    <div className="bg-white rounded-2xl p-6 border border-rose-100 shadow-sm">
+                                        <h3 className="text-lg font-bold text-rose-900 mb-4">Verified Badges</h3>
+                                        <div className="flex flex-wrap gap-2">
+                                            {stats.badges.map(b => <Badge key={b} name={b} />)}
+                                        </div>
+                                    </div>
 
-                            {/* Chain Stats */}
-                            <div className="grid md:grid-cols-2 gap-6">
-                                <ChainStatsCard
-                                    chain="stellar"
-                                    address={profileData.stellar.address}
-                                    score={profileData.stellar.score}
-                                    breakdown={profileData.stellar.scoreBreakdown}
-                                    stats={profileData.stellar.stats}
-                                />
-                                <ChainStatsCard
-                                    chain="polkadot"
-                                    address={profileData.polkadot.address}
-                                    score={profileData.polkadot.score}
-                                    breakdown={profileData.polkadot.scoreBreakdown}
-                                    stats={profileData.polkadot.stats}
-                                />
-                            </div>
+                                    {/* Activity Summary */}
+                                    <div className="bg-white rounded-2xl p-6 border border-rose-100 shadow-sm">
+                                        <h3 className="text-lg font-bold text-rose-900 mb-4">Activity Stats</h3>
+                                        <div className="grid grid-cols-1 gap-4">
+                                            <div className="flex justify-between items-center py-2 border-b border-gray-50">
+                                                <span className="text-gray-600">Reviews Posted</span>
+                                                <span className="font-bold text-gray-900">{stats.totalReviews}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center py-2 border-b border-gray-50">
+                                                <span className="text-gray-600">Helpful Votes</span>
+                                                <span className="font-bold text-gray-900">{stats.helpfulVotes}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center py-2">
+                                                <span className="text-gray-600">Disputes Won</span>
+                                                <span className="font-bold text-gray-900">{stats.disputesWon}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
 
-                            {/* Badges */}
-                            <BadgesGrid badges={profileData.badges} />
-
-                            {/* Actions */}
-                            <div className="flex flex-wrap justify-center gap-4">
-                                <Link
-                                    to="/dashboard"
-                                    className="px-6 py-3 bg-white border-2 border-rose-200 text-rose-700 rounded-xl hover:bg-rose-50 hover:border-rose-300 transition-all font-medium"
-                                >
-                                    📊 View Dashboard
-                                </Link>
-                                <Link
-                                    to="/rewards"
-                                    className="px-6 py-3 bg-gradient-to-r from-rose-500 to-pink-500 text-white rounded-xl hover:from-rose-600 hover:to-pink-600 transition-all font-medium shadow-lg shadow-rose-200/50"
-                                >
-                                    🏆 View Rewards →
-                                </Link>
+                                {/* Right Column: Detailed Feed (Mock) */}
+                                <div className="md:col-span-2 space-y-6">
+                                    <h3 className="text-xl font-bold text-rose-900">Recent Contributions</h3>
+                                    {[1, 2, 3].map((i) => (
+                                        <div key={i} className="bg-white rounded-2xl p-6 border border-rose-100 shadow-sm">
+                                            <div className="flex justify-between items-start mb-3">
+                                                <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded font-bold">Verified Purchase</span>
+                                                <span className="text-sm text-gray-400">2 days ago</span>
+                                            </div>
+                                            <h4 className="font-bold text-gray-900 mb-2">Review for: Decentralized Exchange V2</h4>
+                                            <p className="text-gray-600 text-sm mb-4">
+                                                "Excellent user experience and valid liquidity pools. The transaction speed on Monad is noticeable compared to other L1s. However, the UI could use..."
+                                            </p>
+                                            <div className="flex gap-4 text-sm text-gray-500">
+                                                <span>👍 24 Helpful</span>
+                                                <span>💰 Earned 35 MR</span>
+                                                <span>🤖 Quality: 92/100</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         </div>
-                    ) : null}
+                    )}
                 </div>
             </main>
-
             <Footer />
         </div>
     );

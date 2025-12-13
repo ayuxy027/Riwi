@@ -1,145 +1,102 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
-import { REWARD_TIERS, getTierFromScore, type TierInfo } from "../services/api";
 import { useApp } from "../context/AppContext";
 
 // ============================================
-// Tier Card Component
+// Types & Demo Data
 // ============================================
 
-const TierCard = ({
-    tier,
-    isCurrentTier,
-    isUnlocked
-}: {
-    tier: TierInfo;
-    isCurrentTier: boolean;
-    isUnlocked: boolean
-}) => {
-    const getTierGradient = (tierLevel: number) => {
-        const gradients: Record<number, string> = {
-            1: "from-amber-400 to-amber-600",
-            2: "from-slate-300 to-slate-500",
-            3: "from-yellow-400 to-amber-500",
-            4: "from-cyan-400 to-blue-500",
-            5: "from-rose-400 to-pink-600",
-        };
-        return gradients[tierLevel] || "from-gray-400 to-gray-600";
-    };
+interface RewardTransaction {
+    id: string;
+    source: string;
+    amount: number;
+    date: string;
+    status: "Completed" | "Processing";
+}
+
+const DEMO_TRANSACTIONS: RewardTransaction[] = [
+    { id: "tx-1", source: "Review Reward - DeFi Exchange Pro", amount: 50, date: "2 hrs ago", status: "Completed" },
+    { id: "tx-2", source: "Review Reward - Monad Wallet", amount: 35, date: "1 day ago", status: "Completed" },
+    { id: "tx-3", source: "Weekly Top Reviewer Bonus", amount: 100, date: "3 days ago", status: "Completed" },
+    { id: "tx-4", source: "Review Reward - NFT Marketplace", amount: 20, date: "3 days ago", status: "Completed" },
+    { id: "tx-5", source: "Staking Reward (APY)", amount: 12.5, date: "1 week ago", status: "Completed" },
+];
+
+const REPUTATION_MULTIPLIERS = [
+    { level: "Novice", multiplier: "1.0x", minScore: 0, benefits: ["Basic Rewards"] },
+    { level: "Verified", multiplier: "1.2x", minScore: 100, benefits: ["+20% Rewards", "Basic Badge"] },
+    { level: "Expert", multiplier: "1.5x", minScore: 500, benefits: ["+50% Rewards", "Expert Badge", "Priority AI Check"] },
+    { level: "Authority", multiplier: "2.0x", minScore: 1000, benefits: ["2x Rewards", "Authority Badge", "Governance Vote"] },
+];
+
+// ============================================
+// Components
+// ============================================
+
+const RewardCard = ({ label, value, subtext, highlight = false }: { label: string; value: string; subtext?: string; highlight?: boolean }) => (
+    <div className={`p-6 rounded-2xl border ${highlight ? "bg-gradient-to-br from-rose-900 to-pink-900 text-white border-rose-800" : "bg-white border-rose-100"} shadow-sm`}>
+        <p className={`text-sm font-medium mb-1 ${highlight ? "text-rose-100" : "text-rose-600"}`}>{label}</p>
+        <h3 className="text-3xl font-bold mb-2">{value}</h3>
+        {subtext && <p className={`text-xs ${highlight ? "text-rose-200" : "text-gray-500"}`}>{subtext}</p>}
+    </div>
+);
+
+const TransactionRow = ({ tx }: { tx: RewardTransaction }) => (
+    <div className="flex items-center justify-between p-4 hover:bg-rose-50 rounded-xl transition-colors border-b border-gray-50 last:border-0">
+        <div className="flex items-center gap-4">
+            <div className="w-10 h-10 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-lg">
+                💸
+            </div>
+            <div>
+                <p className="font-semibold text-gray-900">{tx.source}</p>
+                <p className="text-xs text-gray-500">{tx.date} • {tx.id}</p>
+            </div>
+        </div>
+        <div className="text-right">
+            <p className="font-bold text-green-600">+{tx.amount} MR</p>
+            <p className="text-xs text-gray-400">{tx.status}</p>
+        </div>
+    </div>
+);
+
+const LevelCard = ({ level, currentScore }: { level: typeof REPUTATION_MULTIPLIERS[0], currentScore: number }) => {
+    const isUnlocked = currentScore >= level.minScore;
+    const isCurrent = currentScore >= level.minScore && (REPUTATION_MULTIPLIERS.find(l => l.minScore > level.minScore)?.minScore || Infinity) > currentScore;
 
     return (
-        <div
-            className={`relative p-6 rounded-2xl border-2 transition-all duration-300 ${isCurrentTier
-                    ? "bg-gradient-to-br from-rose-50 to-pink-50 border-rose-300 shadow-xl shadow-rose-200/50"
-                    : isUnlocked
-                        ? "bg-white border-gray-200 hover:border-rose-200 hover:shadow-lg"
-                        : "bg-gray-50 border-gray-100 opacity-60"
-                }`}
-        >
-            {isCurrentTier && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <span className="px-3 py-1 bg-gradient-to-r from-rose-500 to-pink-500 text-white text-xs font-bold rounded-full shadow-md">
-                        ⭐ YOUR TIER
-                    </span>
+        <div className={`relative p-6 rounded-2xl border-2 transition-all ${isCurrent ? "border-rose-500 bg-rose-50 shadow-lg scale-105 z-10" :
+                isUnlocked ? "border-rose-200 bg-white" : "border-gray-100 bg-gray-50 opacity-60"
+            }`}>
+            {isCurrent && (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-rose-500 text-white text-xs font-bold px-3 py-1 rounded-full">
+                    Current Level
                 </div>
             )}
-
-            <div className="text-center">
-                <div className={`w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br ${getTierGradient(tier.tier)} flex items-center justify-center shadow-lg`}>
-                    <span className="text-3xl">{tier.badgeEmoji}</span>
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-1">{tier.name}</h3>
-                <p className="text-sm text-gray-500 mb-4">
-                    {tier.minScore} - {tier.maxScore} points
-                </p>
-
-                <div className="space-y-2">
-                    <p className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Rewards</p>
-                    <ul className="space-y-1">
-                        {tier.rewards.slice(0, 3).map((reward) => (
-                            <li key={reward} className="text-sm text-gray-600 flex items-center gap-2">
-                                <span className={isUnlocked ? "text-green-500" : "text-gray-300"}>✓</span>
-                                {reward}
-                            </li>
-                        ))}
-                    </ul>
-                </div>
+            <div className="flex justify-between items-start mb-4">
+                <h3 className="text-xl font-bold text-gray-900">{level.level}</h3>
+                <span className="bg-rose-100 text-rose-800 text-xs font-bold px-2 py-1 rounded">{level.multiplier} Reward</span>
             </div>
-        </div>
-    );
-};
-
-// ============================================
-// How It Works Section
-// ============================================
-
-const HowItWorks = () => {
-    const steps = [
-        {
-            icon: "🔗",
-            title: "Build Reputation",
-            description: "Engage across multiple chains to build your reputation score"
-        },
-        {
-            icon: "📊",
-            title: "Track Progress",
-            description: "Monitor your score and see how you rank against tiers"
-        },
-        {
-            icon: "🏆",
-            title: "Unlock Rewards",
-            description: "Reach new tiers to unlock exclusive perks and benefits"
-        },
-        {
-            icon: "🎁",
-            title: "Claim Benefits",
-            description: "Access partner discounts, DAO voting, and more"
-        },
-    ];
-
-    return (
-        <div className="bg-gradient-to-br from-rose-50 to-pink-50 rounded-2xl p-8 border border-rose-100">
-            <h2 className="text-2xl font-bold text-rose-900 text-center mb-8">
-                How Rewards Work
-            </h2>
-            <div className="grid md:grid-cols-4 gap-6">
-                {steps.map((step, index) => (
-                    <div key={step.title} className="text-center">
-                        <div className="w-14 h-14 mx-auto mb-4 bg-white rounded-xl flex items-center justify-center shadow-md">
-                            <span className="text-2xl">{step.icon}</span>
-                        </div>
-                        <div className="flex items-center justify-center gap-2 mb-2">
-                            <span className="w-6 h-6 bg-rose-500 text-white rounded-full text-sm font-bold flex items-center justify-center">
-                                {index + 1}
-                            </span>
-                            <h3 className="font-semibold text-gray-900">{step.title}</h3>
-                        </div>
-                        <p className="text-sm text-gray-600">{step.description}</p>
-                    </div>
+            <p className="text-sm text-gray-600 mb-4">Requires {level.minScore}+ Reputation</p>
+            <ul className="space-y-2">
+                {level.benefits.map(b => (
+                    <li key={b} className="text-sm flex items-center gap-2 text-gray-700">
+                        <span className="text-green-500">✓</span> {b}
+                    </li>
                 ))}
-            </div>
+            </ul>
         </div>
     );
 };
 
 // ============================================
-// Rewards Page Component
+// Rewards Page
 // ============================================
 
 const Rewards = () => {
-    const { isDemoMode, user } = useApp();
-    const [currentScore, setCurrentScore] = useState<number>(850);
-    const [loading, setLoading] = useState(false);
-
-    useEffect(() => {
-        if (isDemoMode) {
-            setCurrentScore(850);
-        }
-    }, [isDemoMode]);
-
-    const currentTier = getTierFromScore(currentScore);
+    const { isDemoMode, enableDemoMode, user } = useApp();
+    // Mock Score
+    const currentScore = isDemoMode ? 650 : 0; // "Expert" level
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-rose-50 via-white to-pink-50">
@@ -147,85 +104,69 @@ const Rewards = () => {
 
             <main className="pt-24 pb-16 px-6">
                 <div className="max-w-6xl mx-auto">
-                    {/* Page Header */}
                     <div className="text-center mb-12">
-                        <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-3">
-                            <span className="bg-gradient-to-r from-rose-900 via-rose-800 to-pink-900 bg-clip-text text-transparent">
-                                Rewards & Tiers
-                            </span>
-                        </h1>
-                        <p className="text-rose-700 max-w-2xl mx-auto">
-                            Unlock exclusive benefits as you build your cross-chain reputation
-                        </p>
+                        <h1 className="text-3xl md:text-4xl font-bold text-rose-900 mb-3">Rewards & Earnings</h1>
+                        <p className="text-rose-600">Track your earnings and level up your reputation multiplier.</p>
                     </div>
 
-                    {/* Current Status */}
-                    {isDemoMode && (
-                        <div className="mb-8 p-6 bg-white rounded-2xl shadow-lg border border-rose-100">
-                            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-16 h-16 bg-gradient-to-br from-rose-400 to-pink-500 rounded-full flex items-center justify-center shadow-lg">
-                                        <span className="text-3xl">{currentTier.badgeEmoji}</span>
-                                    </div>
-                                    <div>
-                                        <p className="text-sm text-gray-500">Your Current Tier</p>
-                                        <p className="text-2xl font-bold text-gray-900">{currentTier.name}</p>
-                                        <p className="text-sm text-rose-600">{currentScore}/1000 points</p>
-                                    </div>
-                                </div>
-                                <div className="text-center md:text-right">
-                                    <p className="text-sm text-gray-500 mb-2">Progress to next tier</p>
-                                    <div className="w-48 h-3 bg-gray-200 rounded-full overflow-hidden">
-                                        <div
-                                            className="h-full bg-gradient-to-r from-rose-500 to-pink-500 rounded-full transition-all duration-500"
-                                            style={{ width: `${((currentScore - currentTier.minScore) / (currentTier.maxScore - currentTier.minScore)) * 100}%` }}
-                                        />
-                                    </div>
-                                    {currentTier.tier < 5 && (
-                                        <p className="text-xs text-gray-500 mt-1">
-                                            {currentTier.maxScore - currentScore + 1} points to {REWARD_TIERS[currentTier.tier].name}
-                                        </p>
-                                    )}
+                    {!isDemoMode ? (
+                        <div className="text-center py-20 bg-white rounded-3xl border border-rose-100 shadow-sm max-w-2xl mx-auto">
+                            <h2 className="text-xl font-bold text-rose-900 mb-4">Connect to see your stats</h2>
+                            <button onClick={enableDemoMode} className="px-8 py-3 bg-rose-500 text-white rounded-xl font-medium hover:bg-rose-600">
+                                View Demo Data
+                            </button>
+                        </div>
+                    ) : (
+                        <>
+                            {/* Earnings Overview */}
+                            <div className="grid md:grid-cols-3 gap-6 mb-12">
+                                <RewardCard
+                                    label="Available Balance"
+                                    value="2,450 MR"
+                                    subtext="≈ $122.50 USD"
+                                    highlight
+                                />
+                                <RewardCard
+                                    label="Lifetime Earnings"
+                                    value="5,890 MR"
+                                    subtext="Since Jan 2024"
+                                />
+                                <RewardCard
+                                    label="Pending Rewards"
+                                    value="150 MR"
+                                    subtext="Processing on Monad..."
+                                />
+                            </div>
+
+                            {/* Reputation Levels */}
+                            <div className="mb-12">
+                                <h2 className="text-2xl font-bold text-rose-900 mb-6">Reputation Multipliers</h2>
+                                <div className="grid md:grid-cols-4 gap-4">
+                                    {REPUTATION_MULTIPLIERS.map((level) => (
+                                        <LevelCard key={level.level} level={level} currentScore={currentScore} />
+                                    ))}
                                 </div>
                             </div>
-                        </div>
+
+                            {/* Recent Transactions */}
+                            <div className="bg-white rounded-2xl border border-rose-100 shadow-sm overflow-hidden">
+                                <div className="p-6 border-b border-rose-100 flex justify-between items-center">
+                                    <h2 className="text-xl font-bold text-rose-900">Recent Payouts</h2>
+                                    <button className="text-sm text-rose-600 hover:text-rose-800 font-medium">View Explorer ↗</button>
+                                </div>
+                                <div className="divide-y divide-gray-50">
+                                    {DEMO_TRANSACTIONS.map((tx) => (
+                                        <TransactionRow key={tx.id} tx={tx} />
+                                    ))}
+                                </div>
+                                <div className="p-4 text-center bg-gray-50">
+                                    <p className="text-xs text-gray-500">Transaction processing provided by Monad high-throughput blockchain</p>
+                                </div>
+                            </div>
+                        </>
                     )}
-
-                    {/* How It Works */}
-                    <div className="mb-12">
-                        <HowItWorks />
-                    </div>
-
-                    {/* Tiers Grid */}
-                    <div className="mb-8">
-                        <h2 className="text-2xl font-bold text-center text-gray-900 mb-8">
-                            Reward Tiers
-                        </h2>
-                        <div className="grid md:grid-cols-3 lg:grid-cols-5 gap-6">
-                            {REWARD_TIERS.map((tier) => (
-                                <TierCard
-                                    key={tier.tier}
-                                    tier={tier}
-                                    isCurrentTier={tier.tier === currentTier.tier}
-                                    isUnlocked={currentScore >= tier.minScore}
-                                />
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* CTA */}
-                    <div className="text-center">
-                        <Link
-                            to="/dashboard"
-                            className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-rose-500 to-pink-500 text-white rounded-xl hover:from-rose-600 hover:to-pink-600 transition-all font-medium shadow-lg shadow-rose-200/50"
-                        >
-                            <span>📊</span>
-                            View Your Dashboard
-                        </Link>
-                    </div>
                 </div>
             </main>
-
             <Footer />
         </div>
     );

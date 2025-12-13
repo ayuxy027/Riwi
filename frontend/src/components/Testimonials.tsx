@@ -1,22 +1,22 @@
 const Testimonials = () => {
   const testimonials = [
     {
-      quote: "ChainRepute solved the fragmented identity problem I faced across Stellar and Polkadot. My reputation now follows me everywhere.",
+      quote: "MonadReview has transformed how I find trusted services in Web3. The AI analysis gives me confidence that the reviews are genuine.",
       author: "Alex Rivera",
-      role: "DeFi Trader",
-      company: "Polkadot Ecosystem",
+      role: "DeFi User",
+      company: "Monad Ecosystem",
     },
     {
-      quote: "As a governance participant, I can now prove my cross-chain contribution history to new DAOs. This is a game-changer.",
+      quote: "As a business owner, the detailed feedback and analytics have helped us improve our product significantly. Claiming our profile was seamless.",
       author: "Sarah Kim",
-      role: "DAO Contributor",
-      company: "Stellar Network",
+      role: "Product Lead",
+      company: "TechGadget Inc.",
     },
     {
-      quote: "Finally, a tool that unifies my Web3 identity. I got access to an exclusive community based on my verified reputation.",
+      quote: "I love earning rewards for sharing my honest experiences. It's great to be recognized for contributing helpful information to the community.",
       author: "Marcus Johnson",
-      role: "Liquidity Provider",
-      company: "Cross-Chain Investor",
+      role: "Top Reviewer",
+      company: "Community Member",
     },
   ];
 
@@ -27,11 +27,11 @@ const Testimonials = () => {
           <p className="text-sm font-medium text-rose-600 mb-4 uppercase tracking-wider">Testimonials</p>
           <h2 className="text-3xl md:text-4xl font-bold mb-4 tracking-tight">
             <span className="bg-gradient-to-r from-rose-900 via-rose-800 to-rose-900 bg-clip-text text-transparent">
-              Trusted by Web3 users
+              Trusted by the Community
             </span>
           </h2>
           <p className="text-lg text-rose-700">
-            See what our users say about cross-chain reputation.
+            See what users and businesses are saying about MonadReview.
           </p>
         </div>
 

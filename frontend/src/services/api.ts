@@ -1,97 +1,57 @@
 // ============================================
-// API Service for ChainRepute
+// API Service for MonadReview
 // ============================================
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
 
 // ============================================
-// Types (matching backend types)
+// Types
 // ============================================
 
-export interface ScanRequest {
-  stellarAddress: string;
-  polkadotAddress: string;
-}
-
-export interface ScanResponse {
-  success: boolean;
-  data?: ReputationData;
-  error?: string;
-}
-
-export interface ReputationData {
-  overallScore: number;
-  profile: ReputationProfile;
-  stellar: StellarActivity;
-  polkadot: PolkadotActivity;
-  breakdown: ScoreBreakdown;
-  aiInsights: AIInsights;
+export interface Review {
+  id: string;
+  productId: string;
+  productName: string;
+  reviewer: string;
+  content: string;
+  rating: number;
+  qualityScore: number; // AI score 0-100
+  rewardAmount: number;
+  status: "Pending" | "Verified" | "Rejected";
   timestamp: number;
+  txHash?: string;
 }
 
-export type ReputationProfile =
-  | "Trader"
-  | "Governor"
-  | "Staker"
-  | "Liquidity Provider"
-  | "Balanced"
-  | "Newcomer";
-
-// 5-Parameter Scoring (100 points each = 500 per chain)
-export interface ChainScoreBreakdown {
-  volumeScore: number;           // 0-100: Total token volume transacted
-  uniqueRecipientsScore: number; // 0-100: Distinct addresses interacted with
-  frequencyScore: number;        // 0-100: Transaction frequency/consistency
-  accountAgeScore: number;       // 0-100: How old the account is
-  diversityScore: number;        // 0-100: Activity diversity (types of actions)
-}
-
-export interface StellarActivity {
+export interface UserReputation {
   address: string;
-  transactionCount: number;
-  totalVolume: number;
-  liquidityProvided: number;
-  accountAge: number;
-  assetDiversity: number;
-  paymentCount: number;
-  uniqueRecipients: number;
-  oldestTransaction: string | null;
-  scoreBreakdown: ChainScoreBreakdown;
-  score: number; // 0-500
+  overallScore: number; // 0-1000
+  rank: string;
+  totalReviews: number;
+  totalRewards: number; // MR tokens
+  stakedAmount: number;
+  badges: string[];
+  joinedAt: number;
 }
 
-export interface PolkadotActivity {
-  address: string;
-  governanceVotes: number;
-  stakingAmount: number;
-  stakingDuration: number;
-  validatorNominations: number;
-  parachainInteractions: number;
-  accountAge: number;
-  identityVerified: boolean;
-  uniqueRecipients: number;
-  oldestTransaction: string | null;
-  scoreBreakdown: ChainScoreBreakdown;
-  score: number; // 0-500
+export interface ReviewSubmission {
+  productId: string;
+  content: string;
+  rating: number;
+  stakeAmount: number;
 }
 
-// Legacy breakdown for AI insights
-export interface ScoreBreakdown {
-  transactionConsistency: number;
-  governanceParticipation: number;
-  stakingBehavior: number;
-  liquidityProvision: number;
-  accountAge: number;
-  assetDiversity: number;
+export interface BreakdownScore {
+  authenticity: number;
+  helpfulness: number;
+  detail: number;
+  tone: number;
 }
 
-export interface AIInsights {
-  profile: ReputationProfile;
-  confidence: number;
-  summary: string;
-  strengths: string[];
-  recommendations: string[];
-  redFlags: string[];
+export interface AIAnalysisResult {
+  isAuthentic: boolean;
+  score: number;
+  feedback: string[];
+  breakdown: BreakdownScore;
 }
 
 // ============================================
@@ -121,7 +81,7 @@ export const REWARD_TIERS: TierInfo[] = [
     badge: "Bronze",
     badgeEmoji: "🥉",
     rewards: ["Basic profile page", "Community access"],
-    perks: ["View your cross-chain reputation"],
+    perks: ["View your reputation"],
     color: "amber",
   },
   {
@@ -213,65 +173,13 @@ export async function checkHealth(): Promise<HealthResponse> {
 }
 
 /**
- * Scan blockchain activity for both Stellar and Polkadot addresses
+ * Submit a review (Mock)
  */
-export async function scanReputation(
-  stellarAddress: string,
-  polkadotAddress: string
-): Promise<ReputationData> {
-  const response = await fetch(`${API_BASE_URL}/scan`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      stellarAddress,
-      polkadotAddress,
-    } as ScanRequest),
-  });
-
-  const result: ScanResponse = await response.json();
-
-  if (!response.ok || !result.success) {
-    throw new Error(result.error || "Failed to scan reputation");
-  }
-
-  if (!result.data) {
-    throw new Error("No data returned from scan");
-  }
-
-  return result.data;
-}
-
-/**
- * Validate wallet addresses without performing a full scan
- */
-export async function validateAddresses(
-  stellarAddress?: string,
-  polkadotAddress?: string
-): Promise<{
-  stellar: { provided: boolean; valid: boolean };
-  polkadot: { provided: boolean; valid: boolean };
-  canScan: boolean;
-}> {
-  const params = new URLSearchParams();
-  if (stellarAddress) params.append("stellarAddress", stellarAddress);
-  if (polkadotAddress) params.append("polkadotAddress", polkadotAddress);
-
-  const response = await fetch(`${API_BASE_URL}/scan/validate?${params}`);
-  const result = await response.json();
-
-  return result.validation
-    ? {
-        stellar: result.validation.stellar,
-        polkadot: result.validation.polkadot,
-        canScan: result.canScan,
-      }
-    : {
-        stellar: { provided: false, valid: false },
-        polkadot: { provided: false, valid: false },
-        canScan: false,
-      };
+export async function submitReview(submission: ReviewSubmission): Promise<{ success: boolean; reviewId: string }> {
+  console.log("Submitting review:", submission);
+  // Mock delay
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  return { success: true, reviewId: "mock-id-" + Date.now() };
 }
 
 // ============================================
@@ -320,28 +228,11 @@ export function formatNumber(num: number): string {
   return num.toFixed(2);
 }
 
-/**
- * Get profile badge color
- */
-export function getProfileColor(profile: ReputationProfile): string {
-  const colors: Record<ReputationProfile, string> = {
-    Trader: "bg-blue-100 text-blue-800",
-    Governor: "bg-purple-100 text-purple-800",
-    Staker: "bg-green-100 text-green-800",
-    "Liquidity Provider": "bg-cyan-100 text-cyan-800",
-    Balanced: "bg-amber-100 text-amber-800",
-    Newcomer: "bg-gray-100 text-gray-800",
-  };
-  return colors[profile] || "bg-gray-100 text-gray-800";
-}
-
 export default {
   checkHealth,
-  scanReputation,
-  validateAddresses,
+  submitReview,
   getScoreColor,
   getScoreBgColor,
   getScoreLabel,
   formatNumber,
-  getProfileColor,
 };
