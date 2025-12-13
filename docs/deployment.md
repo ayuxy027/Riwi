@@ -15,6 +15,7 @@ ReviewToken:        0x9Ce50706CD0F73bB5502b7AA0a8cD17D8513de83          # ERC-20
 ReputationSystem:   0xF158be31A900cA8B2Be13BBd22D9d81E64764DBC          # Reputation tracking
 ReviewStaking:      0xCd9352bFBCDfAB07EE8e664A64ECe191c1836180          # Staking verification (Updated)
 ReviewPlatform:     0x40C11dF88eEf1B1276978b750e315E49A929D10d          # Main orchestration
+TokenCashout:       [PENDING DEPLOYMENT]                                # RVT to MON cashout
 ```
 
 **Note**: ReviewStaking was updated to fix deltaStake checking. Previous address: `0x51F7cbd74731976d834a67F156dBC387CCc59c1D` (deprecated)
@@ -123,3 +124,74 @@ The deployed system consists of 4 interconnected smart contracts:
 - **Result**: Users can now submit reviews immediately after staking, without waiting for epoch processing
 - **Status**: ReviewPlatform has been updated to use the new staking contract
 - **Verification**: All endpoints tested and working correctly
+
+### TokenCashout - RVT to MON Exchange (New Feature)
+
+**Purpose**: Allows users to exchange their earned RVT tokens for native MON tokens.
+
+**Contract**: `contracts/cashout/TokenCashout.sol`
+
+**Key Functions**:
+- `cashout(uint256 rvtAmount)` - Exchange RVT for MON at current rate
+- `calculateCashout(uint256 rvtAmount)` - Preview MON output for given RVT
+- `getContractStats()` - Get treasury balance, exchange rate, etc.
+- `getUserStats(address user)` - Get user's cashout history
+
+**Admin Functions**:
+- `setExchangeRate(uint256 newRate)` - Update exchange rate
+- `setCashoutEnabled(bool enabled)` - Enable/disable cashout
+- `withdrawTreasury(uint256 amount)` - Withdraw MON from treasury
+- `withdrawRvt(uint256 amount)` - Withdraw collected RVT
+
+**Configuration**:
+- Default exchange rate: 0.01 MON per 1 RVT
+- Minimum cashout: 1 RVT
+- Maximum cashout: 10,000 RVT per transaction
+
+**Flow**:
+```
+1. User earns RVT from validated reviews →
+2. User calls approve(cashoutContract, amount) on ReviewToken →
+3. User calls cashout(amount) on TokenCashout →
+4. Contract receives RVT, sends MON to user
+```
+
+**Deployment**:
+```bash
+# 1. Set up environment
+cp .env.example .env
+# Edit .env with your PRIVATE_KEY
+
+# 2. Compile contracts
+npx hardhat compile
+
+# 3. Deploy cashout contract
+npx hardhat run scripts/deploy-cashout.js --network monad_testnet
+
+# 4. Fund treasury (after deployment)
+cast send <CASHOUT_ADDRESS> --value 10ether \
+  --rpc-url https://testnet-rpc.monad.xyz --legacy
+```
+
+**Verification Commands**:
+```bash
+# Check treasury balance
+cast call <CASHOUT_ADDRESS> "treasuryBalance()" \
+  --rpc-url https://testnet-rpc.monad.xyz --legacy
+
+# Check exchange rate
+cast call <CASHOUT_ADDRESS> "exchangeRate()" \
+  --rpc-url https://testnet-rpc.monad.xyz --legacy
+
+# Calculate cashout for 100 RVT (100 * 10^18 wei)
+cast call <CASHOUT_ADDRESS> \
+  "calculateCashout(uint256)" 100000000000000000000 \
+  --rpc-url https://testnet-rpc.monad.xyz --legacy
+```
+
+**Important Notes**:
+- Current ReviewToken restricts transfers to owner only
+- For cashout to work with existing token, either:
+  1. Deploy ReviewTokenV2 with approved receivers, OR
+  2. Have owner initiate transfers on behalf of users
+- Treasury must be funded with MON before users can cashout
