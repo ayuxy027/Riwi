@@ -1,433 +1,301 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
-import ReputationScanner from "../components/ReputationScanner";
-import ReputationDashboard from "../components/ReputationDashboard";
-import { mintSBT, getReputation, verifyOwnership, type SBTReputation } from "../services/reputation";
+import { useApp } from "../context/AppContext";
+import { getReputation, type ReputationData } from "../services/reputation";
 import {
-    initializePolkadot,
-    mintPolkadotSBT,
-    getPolkadotReputation,
-    type PolkadotReputation
-} from "../services/polkadot";
-import { useWallet } from "../wallet/WalletContext";
-import type { ApiPromise } from "@polkadot/api";
-import type { ReputationData } from "../services/api";
+    getTierFromScore,
+    getScoreColor,
+    getScoreLabel,
+    type TierInfo
+} from "../services/api";
 
 // ============================================
-// Dashboard Page with Cross-Chain SBT Integration
+// Demo Data
+// ============================================
+
+const DEMO_REPUTATION_DATA: ReputationData = {
+    owner: "Demo User",
+    score: 850,
+    level: "Diamond",
+    lastUpdated: Date.now(),
+    badges: ["Early Adopter", "Community Leader", "Verified User", "Cross-Chain Pioneer"],
+    history: [
+        { date: "2024-01", score: 100 },
+        { date: "2024-03", score: 250 },
+        { date: "2024-06", score: 450 },
+        { date: "2024-09", score: 650 },
+        { date: "2024-12", score: 850 },
+    ],
+};
+
+// ============================================
+// Score Card Component
+// ============================================
+
+const ScoreCard = ({ score, tier }: { score: number; tier: TierInfo }) => {
+    const percentage = (score / 1000) * 100;
+
+    return (
+        <div className="bg-gradient-to-br from-white to-rose-50 rounded-2xl shadow-xl p-8 border border-rose-100">
+            <div className="text-center">
+                <p className="text-sm font-medium text-rose-600 mb-2">Overall Reputation Score</p>
+                <div className="relative w-40 h-40 mx-auto mb-4">
+                    <svg className="w-full h-full transform -rotate-90">
+                        <circle
+                            cx="80"
+                            cy="80"
+                            r="70"
+                            stroke="currentColor"
+                            strokeWidth="12"
+                            fill="none"
+                            className="text-rose-100"
+                        />
+                        <circle
+                            cx="80"
+                            cy="80"
+                            r="70"
+                            stroke="url(#gradient)"
+                            strokeWidth="12"
+                            fill="none"
+                            strokeLinecap="round"
+                            strokeDasharray={`${percentage * 4.4} 440`}
+                        />
+                        <defs>
+                            <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" stopColor="#f43f5e" />
+                                <stop offset="100%" stopColor="#ec4899" />
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        <span className="text-4xl font-bold text-rose-900">{score}</span>
+                        <span className="text-sm text-rose-600">/1000</span>
+                    </div>
+                </div>
+                <div className="flex items-center justify-center gap-2">
+                    <span className="text-3xl">{tier.badgeEmoji}</span>
+                    <span className={`text-lg font-bold ${getScoreColor(score)}`}>
+                        {getScoreLabel(score)} - {tier.name}
+                    </span>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// ============================================
+// Badges Component
+// ============================================
+
+const BadgesSection = ({ badges }: { badges: string[] }) => (
+    <div className="bg-white rounded-2xl shadow-lg p-6 border border-rose-100">
+        <h3 className="text-lg font-semibold text-rose-900 mb-4">🏆 Achievements</h3>
+        <div className="flex flex-wrap gap-2">
+            {badges.map((badge, index) => (
+                <span
+                    key={badge}
+                    className="px-3 py-1.5 bg-gradient-to-r from-rose-100 to-pink-100 text-rose-800 rounded-full text-sm font-medium border border-rose-200"
+                    style={{ animationDelay: `${index * 100}ms` }}
+                >
+                    ✨ {badge}
+                </span>
+            ))}
+        </div>
+    </div>
+);
+
+// ============================================
+// Progress History Component
+// ============================================
+
+const ProgressHistory = ({ history }: { history: { date: string; score: number }[] }) => (
+    <div className="bg-white rounded-2xl shadow-lg p-6 border border-rose-100">
+        <h3 className="text-lg font-semibold text-rose-900 mb-4">📈 Score History</h3>
+        <div className="space-y-3">
+            {history.map((entry, index) => (
+                <div key={entry.date} className="flex items-center gap-4">
+                    <span className="text-sm text-rose-600 w-20">{entry.date}</span>
+                    <div className="flex-1 h-2 bg-rose-100 rounded-full overflow-hidden">
+                        <div
+                            className="h-full bg-gradient-to-r from-rose-500 to-pink-500 rounded-full transition-all duration-500"
+                            style={{
+                                width: `${(entry.score / 1000) * 100}%`,
+                                animationDelay: `${index * 100}ms`
+                            }}
+                        />
+                    </div>
+                    <span className="text-sm font-medium text-rose-900 w-12 text-right">{entry.score}</span>
+                </div>
+            ))}
+        </div>
+    </div>
+);
+
+// ============================================
+// Quick Stats Component
+// ============================================
+
+const QuickStats = ({ data }: { data: ReputationData }) => {
+    const stats = [
+        { label: "Current Level", value: data.level, icon: "🎯" },
+        { label: "Total Badges", value: data.badges.length.toString(), icon: "🏅" },
+        { label: "Last Updated", value: new Date(data.lastUpdated).toLocaleDateString(), icon: "📅" },
+        { label: "Growth Rate", value: "+15%", icon: "📊" },
+    ];
+
+    return (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {stats.map((stat) => (
+                <div key={stat.label} className="bg-white rounded-xl p-4 border border-rose-100 shadow-sm text-center hover:shadow-md transition-shadow">
+                    <span className="text-2xl mb-2 block">{stat.icon}</span>
+                    <p className="text-lg font-bold text-rose-900">{stat.value}</p>
+                    <p className="text-xs text-rose-600">{stat.label}</p>
+                </div>
+            ))}
+        </div>
+    );
+};
+
+// ============================================
+// Dashboard Page Component (No Web3)
 // ============================================
 
 const Dashboard = () => {
-    const { stellar, polkadot, connectStellar, connectPolkadot } = useWallet();
-    const [reputationData, setReputationData] = useState<ReputationData | null>(null);
-    const [scanError, setScanError] = useState<string | null>(null);
-    const [hasSBT, setHasSBT] = useState<boolean>(false);
-    const [sbtData, setSbtData] = useState<SBTReputation | null>(null);
-    const [isMinting, setIsMinting] = useState<boolean>(false);
-    const [mintSuccess, setMintSuccess] = useState<string | null>(null);
-    const [mintError, setMintError] = useState<string | null>(null);
+    const { isDemoMode, enableDemoMode, user } = useApp();
+    const [reputationData, setReputationData] = useState<ReputationData | null>(
+        isDemoMode ? DEMO_REPUTATION_DATA : null
+    );
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
-    // Polkadot states
-    const [polkadotApi, setPolkadotApi] = useState<ApiPromise | null>(null);
-    const [hasPolkadotSBT, setHasPolkadotSBT] = useState<boolean>(false);
-    const [polkadotSBTData, setPolkadotSBTData] = useState<PolkadotReputation | null>(null);
-    const [isPolkadotMinting, setIsPolkadotMinting] = useState<boolean>(false);
-    const [polkadotMintError, setPolkadotMintError] = useState<string | null>(null);
-    const [polkadotMintSuccess, setPolkadotMintSuccess] = useState<string | null>(null);
+    const handleScan = async () => {
+        setIsLoading(true);
+        setError(null);
 
-    // Initialize Polkadot API on mount
-    useEffect(() => {
-        const initPdk = async () => {
-            try {
-                const api = await initializePolkadot();
-                setPolkadotApi(api);
-                // TODO: Set contract address after deployment
-                // setContractAddress("CONTRACT_ADDRESS_HERE");
-            } catch (err) {
-                console.error("Failed to initialize Polkadot:", err);
-            }
-        };
-        initPdk();
-    }, []);
-
-    const handleScanComplete = async (data: ReputationData) => {
-        setReputationData(data);
-        setScanError(null);
-
-        // Check if user has an SBT for this address
-        if (stellar.address) {
-            try {
-                const ownership = await verifyOwnership(stellar.address);
-                setHasSBT(ownership);
-
-                if (ownership) {
-                    const sbtInfo = await getReputation(stellar.address);
-                    setSbtData(sbtInfo);
-                }
-            } catch (err) {
-                console.error("Error checking SBT:", err);
-            }
+        try {
+            const data = await getReputation(user.address);
+            setReputationData(data);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to fetch reputation");
+        } finally {
+            setIsLoading(false);
         }
-    };
-
-    const handleScanError = (error: string) => {
-        setScanError(error);
     };
 
     const handleRescan = () => {
         setReputationData(null);
-        setScanError(null);
-        setMintSuccess(null);
-        setMintError(null);
+        setError(null);
     };
 
-    const handleMintSBT = async () => {
-        if (!stellar.connected || !stellar.address) {
-            setMintError("Please connect your Stellar wallet first");
-            return;
-        }
-
-        if (!reputationData) {
-            setMintError("Please scan your reputation first");
-            return;
-        }
-
-        setIsMinting(true);
-        setMintError(null);
-        setMintSuccess(null);
-
-        const timeoutId = setTimeout(() => {
-            setIsMinting(false);
-            setMintError("Transaction timed out. Please try again.");
-        }, 60000);
-
-        try {
-            const result = await mintSBT(
-                stellar.address,
-                Math.round(reputationData.overallScore),
-                reputationData.profile
-            );
-
-            clearTimeout(timeoutId);
-
-            if (result.success) {
-                setMintSuccess(`🎉 SBT Minted! TX: ${result.hash?.substring(0, 12)}...`);
-                setHasSBT(true);
-
-                // Refresh SBT data
-                setTimeout(async () => {
-                    const sbtInfo = await getReputation(stellar.address!);
-                    setSbtData(sbtInfo);
-                }, 3000);
-            }
-        } catch (err) {
-            clearTimeout(timeoutId);
-            const errorMessage = err instanceof Error ? err.message : "Failed to mint SBT";
-            setMintError(errorMessage);
-        } finally {
-            clearTimeout(timeoutId);
-            setIsMinting(false);
-        }
-    };
-
-    const handleMintPolkadotSBT = async () => {
-        if (!polkadot.connected || !polkadot.address) {
-            setPolkadotMintError("Please connect your Polkadot wallet first");
-            return;
-        }
-
-        if (!polkadotApi) {
-            setPolkadotMintError("Polkadot API not initialized. Please refresh the page.");
-            return;
-        }
-
-        if (!reputationData) {
-            setPolkadotMintError("Please scan your reputation first");
-            return;
-        }
-
-        setIsPolkadotMinting(true);
-        setPolkadotMintError(null);
-        setPolkadotMintSuccess(null);
-
-        const timeoutId = setTimeout(() => {
-            setIsPolkadotMinting(false);
-            setPolkadotMintError("Transaction timed out. Please try again.");
-        }, 120000); // 2 minute timeout for Polkadot
-
-        try {
-            console.log("🔨 Minting Polkadot SBT...");
-
-            const result = await mintPolkadotSBT(
-                polkadotApi,
-                polkadot.address,
-                Math.round(reputationData.overallScore),
-                reputationData.profile,
-                stellar.address || "NOT_LINKED"
-            );
-
-            clearTimeout(timeoutId);
-
-            if (result.success) {
-                setPolkadotMintSuccess("🎉 Polkadot SBT Minting initiated!");
-                setHasPolkadotSBT(true);
-
-                // Refresh Polkadot SBT data
-                setTimeout(async () => {
-                    const pdk = await initializePolkadot();
-                    const sbtInfo = await getPolkadotReputation(pdk, polkadot.address!);
-                    setPolkadotSBTData(sbtInfo);
-                }, 5000);
-            } else {
-                setPolkadotMintError(result.error || "Failed to mint Polkadot SBT");
-            }
-        } catch (err) {
-            clearTimeout(timeoutId);
-            const errorMessage = err instanceof Error ? err.message : "Failed to mint Polkadot SBT";
-            setPolkadotMintError(errorMessage);
-        } finally {
-            clearTimeout(timeoutId);
-            setIsPolkadotMinting(false);
-        }
-    };
+    const tier = reputationData ? getTierFromScore(reputationData.score) : null;
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-rose-50 via-white to-pink-50">
             <Navbar />
 
-            {/* Main Content */}
             <main className="pt-24 pb-16 px-6">
                 <div className="max-w-4xl mx-auto">
                     {/* Page Header */}
                     <div className="text-center mb-8">
-                        <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3">
-                            Reputation Dashboard
+                        <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-3">
+                            <span className="bg-gradient-to-r from-rose-900 via-rose-800 to-pink-900 bg-clip-text text-transparent">
+                                Reputation Dashboard
+                            </span>
                         </h1>
-                        <p className="text-gray-600 max-w-2xl mx-auto">
-                            Discover your unified cross-chain reputation score across Stellar and Polkadot ecosystems
+                        <p className="text-rose-700 max-w-2xl mx-auto">
+                            Discover your unified cross-chain reputation score and achievements
                         </p>
                     </div>
 
-                    {/* Wallet Connection Banner */}
-                    {!stellar.connected && (
-                        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-xl text-center">
-                            <p className="text-blue-900 font-medium mb-2">
-                                Connect your wallet to mint your Reputation SBT
+                    {!isDemoMode && !reputationData && (
+                        <div className="mb-8 p-6 bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-2xl text-center">
+                            <p className="text-amber-900 font-medium mb-3">
+                                🧪 Try Demo Mode to explore all features
                             </p>
                             <button
-                                onClick={connectStellar}
-                                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                                onClick={enableDemoMode}
+                                className="px-6 py-2.5 bg-gradient-to-r from-amber-500 to-yellow-500 text-white rounded-xl hover:from-amber-600 hover:to-yellow-600 transition-all font-medium shadow-lg shadow-amber-200/50"
                             >
-                                Connect Stellar Wallet
+                                Enable Demo Mode
                             </button>
                         </div>
                     )}
 
-                    {/* Show Scanner or Dashboard based on state */}
-                    {!reputationData ? (
-                        <ReputationScanner
-                            onScanComplete={handleScanComplete}
-                            onScanError={handleScanError}
-                        />
+                    {/* Main Content */}
+                    {reputationData && tier ? (
+                        <div className="space-y-6 animate-fade-in-up">
+                            {/* Quick Stats */}
+                            <QuickStats data={reputationData} />
+
+                            {/* Score and Badges Grid */}
+                            <div className="grid md:grid-cols-2 gap-6">
+                                <ScoreCard score={reputationData.score} tier={tier} />
+                                <BadgesSection badges={reputationData.badges} />
+                            </div>
+
+                            {/* Progress History */}
+                            <ProgressHistory history={reputationData.history} />
+
+                            {/* Actions */}
+                            <div className="flex justify-center gap-4">
+                                <button
+                                    onClick={handleRescan}
+                                    className="px-6 py-3 bg-white border-2 border-rose-200 text-rose-700 rounded-xl hover:bg-rose-50 hover:border-rose-300 transition-all font-medium"
+                                >
+                                    🔄 Refresh Data
+                                </button>
+                                <button
+                                    onClick={() => window.location.href = "/profile"}
+                                    className="px-6 py-3 bg-gradient-to-r from-rose-500 to-pink-500 text-white rounded-xl hover:from-rose-600 hover:to-pink-600 transition-all font-medium shadow-lg shadow-rose-200/50"
+                                >
+                                    View Full Profile →
+                                </button>
+                            </div>
+                        </div>
                     ) : (
-                        <>
-                            <ReputationDashboard
-                                data={reputationData}
-                                onRescan={handleRescan}
-                            />
-
-                            {/* SBT Minting Section */}
-                            <div className="mt-8 bg-white rounded-2xl shadow-xl p-8 border-2 border-rose-100">
-                                <div className="text-center mb-6">
-                                    <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                                        🎖️ Mint Your Reputation SBT
-                                    </h2>
-                                    <p className="text-gray-600">
-                                        {hasSBT
-                                            ? "You already have a Reputation SBT for this wallet"
-                                            : "Lock in your reputation with a Soulbound Token"}
-                                    </p>
-                                </div>
-
-                                {hasSBT && sbtData ? (
-                                    <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-6 border border-green-200">
-                                        <div className="flex items-center justify-center gap-3 mb-4">
-                                            <span className="text-4xl">✅</span>
-                                            <span className="text-xl font-bold text-green-900">SBT Active</span>
-                                        </div>
-                                        <div className="space-y-2 text-sm text-gray-700">
-                                            <div className="flex justify-between">
-                                                <span className="font-medium">Token ID:</span>
-                                                <span className="font-mono">{sbtData.token_id}</span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span className="font-medium">Score:</span>
-                                                <span className="font-bold text-green-700">{sbtData.score}</span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span className="font-medium">Profile:</span>
-                                                <span className="font-semibold">{sbtData.profile}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-4">
-                                        {mintSuccess && (
-                                            <div className="p-4 bg-green-50 border border-green-200 rounded-xl text-green-800 text-center">
-                                                {mintSuccess}
-                                            </div>
-                                        )}
-
-                                        {mintError && (
-                                            <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-800 text-center">
-                                                {mintError}
-                                            </div>
-                                        )}
-
-                                        <button
-                                            onClick={handleMintSBT}
-                                            disabled={isMinting || !stellar.connected}
-                                            className={`w-full px-8 py-4 rounded-xl font-bold text-lg transition-all shadow-lg ${isMinting
-                                                ? "bg-gray-400 cursor-not-allowed"
-                                                : !stellar.connected
-                                                    ? "bg-gray-300 cursor-not-allowed"
-                                                    : "bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white hover:shadow-xl"
-                                                }`}
-                                        >
-                                            {isMinting ? (
-                                                <span className="flex items-center justify-center gap-2">
-                                                    <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                                                    </svg>
-                                                    Minting...
-                                                </span>
-                                            ) : !stellar.connected ? (
-                                                "Connect Wallet First"
-                                            ) : (
-                                                "🎖️ Mint My SBT"
-                                            )}
-                                        </button>
-
-                                        <p className="text-xs text-gray-500 text-center">
-                                            This will create a non-transferable token on Stellar representing your reputation
-                                        </p>
-                                    </div>
-                                )}
+                        /* No Data State */
+                        <div className="bg-white rounded-2xl shadow-xl p-12 border border-rose-100 text-center">
+                            <div className="w-24 h-24 bg-gradient-to-br from-rose-100 to-pink-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                                <svg className="w-12 h-12 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                                </svg>
                             </div>
-
-                            {/* Polkadot SBT Minting Section */}
-                            <div className="mt-8 bg-white rounded-2xl shadow-xl p-8 border-2 border-pink-600">
-                                <div className="text-center mb-6">
-                                    <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                                        🔗 Cross-Chain Polkadot SBT
-                                    </h2>
-                                    <p className="text-gray-600">
-                                        {hasPolkadotSBT
-                                            ? "You already have a Reputation SBT on Polkadot"
-                                            : "Mint your reputation on Rococo testnet (Polkadot)"}
-                                    </p>
-                                </div>
-
-                                {hasPolkadotSBT && polkadotSBTData ? (
-                                    <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-6 border border-purple-200">
-                                        <div className="flex items-center justify-center gap-3 mb-4">
-                                            <span className="text-4xl">✅</span>
-                                            <span className="text-xl font-bold text-purple-900">Polkadot SBT Active</span>
-                                        </div>
-                                        <div className="space-y-2 text-sm text-gray-700">
-                                            <div className="flex justify-between">
-                                                <span className="font-medium">Token ID:</span>
-                                                <span className="font-mono">{polkadotSBTData.token_id}</span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span className="font-medium">Score:</span>
-                                                <span className="font-bold text-purple-700">{polkadotSBTData.score}</span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span className="font-medium">Profile:</span>
-                                                <span className="font-semibold">{polkadotSBTData.profile}</span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span className="font-medium">Network:</span>
-                                                <span className="font-mono text-xs bg-purple-100 px-2 py-1 rounded">Rococo</span>
-                                            </div>
-                                        </div>
-                                    </div>
+                            <h2 className="text-2xl font-bold text-rose-900 mb-3">
+                                Check Your Reputation
+                            </h2>
+                            <p className="text-rose-600 mb-8 max-w-md mx-auto">
+                                Get insights into your cross-chain activity and earn reputation badges
+                            </p>
+                            <button
+                                onClick={handleScan}
+                                disabled={isLoading}
+                                className="px-8 py-4 bg-gradient-to-r from-rose-500 to-pink-500 text-white rounded-xl hover:from-rose-600 hover:to-pink-600 transition-all font-medium shadow-lg shadow-rose-200/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {isLoading ? (
+                                    <span className="flex items-center gap-2">
+                                        <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                        </svg>
+                                        Scanning...
+                                    </span>
                                 ) : (
-                                    <div className="space-y-4">
-                                        {polkadotMintSuccess && (
-                                            <div className="p-4 bg-green-50 border border-green-200 rounded-xl text-green-800 text-center">
-                                                {polkadotMintSuccess}
-                                            </div>
-                                        )}
-
-                                        {polkadotMintError && (
-                                            <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-800 text-center">
-                                                {polkadotMintError}
-                                            </div>
-                                        )}
-
-                                        {!polkadot.connected ? (
-                                            <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-center">
-                                                <p className="text-amber-900 font-medium mb-3">
-                                                    Connect your Polkadot wallet first
-                                                </p>
-                                                <button
-                                                    onClick={() => connectPolkadot()}
-                                                    className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-                                                >
-                                                    Connect Polkadot Wallet
-                                                </button>
-                                            </div>
-                                        ) : (
-                                            <button
-                                                onClick={handleMintPolkadotSBT}
-                                                disabled={isPolkadotMinting || !polkadot.connected || !stellar.address}
-                                                className={`w-full px-8 py-4 rounded-xl font-bold text-lg transition-all shadow-lg ${isPolkadotMinting
-                                                    ? "bg-gray-400 cursor-not-allowed"
-                                                    : !polkadot.connected
-                                                        ? "bg-gray-300 cursor-not-allowed"
-                                                        : "bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white hover:shadow-xl"
-                                                    }`}
-                                            >
-                                                {isPolkadotMinting ? (
-                                                    <span className="flex items-center justify-center gap-2">
-                                                        <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                                                        </svg>
-                                                        Minting on Rococo...
-                                                    </span>
-                                                ) : !polkadot.connected ? (
-                                                    "Connect Polkadot First"
-                                                ) : !stellar.address ? (
-                                                    "Connect Stellar First"
-                                                ) : (
-                                                    "🔗 Mint Polkadot SBT"
-                                                )}
-                                            </button>
-                                        )}
-
-                                        <p className="text-xs text-gray-500 text-center">
-                                            Mint your cross-chain SBT on Polkadot Rococo testnet. Links to your Stellar reputation.
-                                        </p>
-                                    </div>
+                                    "🔍 Scan My Reputation"
                                 )}
-                            </div>
-                        </>
+                            </button>
+                        </div>
                     )}
 
                     {/* Error Display */}
-                    {scanError && !reputationData && (
+                    {error && (
                         <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-xl text-center">
-                            <p className="text-red-700">{scanError}</p>
+                            <p className="text-red-700">{error}</p>
                             <button
-                                onClick={() => setScanError(null)}
+                                onClick={() => setError(null)}
                                 className="mt-2 text-sm text-red-600 hover:text-red-800 underline"
                             >
-                                Try Again
+                                Dismiss
                             </button>
                         </div>
                     )}
