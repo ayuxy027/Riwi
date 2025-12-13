@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { MOCK_PROPERTIES, type Property } from "../data/mockProperties";
+import { validateReview, type ValidationBreakdown } from "../services/api";
 
 export interface ReviewSubmissionData {
     product: string;
@@ -22,6 +23,8 @@ interface AIAnalysis {
     score: number;
     feedback: string[];
     status: "Excellent" | "Good" | "Fair" | "Poor";
+    isValid: boolean;
+    breakdown?: ValidationBreakdown;
 }
 
 const WriteReviewModal = ({ isOpen, onClose, onSubmit, selectedProperty: preSelectedProperty }: WriteReviewModalProps) => {
@@ -41,10 +44,10 @@ const WriteReviewModal = ({ isOpen, onClose, onSubmit, selectedProperty: preSele
         }
     }, [isOpen, preSelectedProperty]);
 
-    const selectedProperty = preSelectedProperty || (selectedPropertyId 
+    const selectedProperty = preSelectedProperty || (selectedPropertyId
         ? MOCK_PROPERTIES.find(p => p.id === selectedPropertyId)
         : null);
-    
+
     const isPropertyLocked = !!preSelectedProperty;
 
     const handleAnalyze = async () => {
@@ -52,26 +55,46 @@ const WriteReviewModal = ({ isOpen, onClose, onSubmit, selectedProperty: preSele
 
         setIsAnalyzing(true);
 
-        // Mock AI Analysis Delay
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        try {
+            // Call real backend AI validation
+            const result = await validateReview({
+                text: content,
+                locationId: selectedProperty?.id,
+            });
 
-        // Simple mock logic for demo
-        const lengthScore = Math.min(content.length / 2, 50);
-        const keywordBonus = /fees|speed|ui|ux|transaction/i.test(content) ? 20 : 0;
-        const score = Math.min(Math.round(40 + lengthScore + keywordBonus), 98);
+            // Determine status based on score
+            const score = result.score || 0;
+            let status: AIAnalysis["status"] = "Poor";
+            if (score >= 80) status = "Excellent";
+            else if (score >= 60) status = "Good";
+            else if (score >= 40) status = "Fair";
 
-        let status: AIAnalysis["status"] = "Poor";
-        if (score >= 90) status = "Excellent";
-        else if (score >= 70) status = "Good";
-        else if (score >= 50) status = "Fair";
+            // Build feedback array
+            const feedback = result.feedback || [];
+            if (!result.isValid && result.reason) {
+                feedback.unshift(`⚠️ ${result.reason}`);
+            }
 
-        const feedback = [];
-        if (content.length < 100) feedback.push("Try adding more specific details to increase your score.");
-        if (!/transaction|speed|cost/i.test(content)) feedback.push("Mentioning transaction details (speed, cost) helps other users.");
-        if (score > 80) feedback.push("Great job! This review is highly detailed and helpful.");
-
-        setAiResult({ score, feedback, status });
-        setIsAnalyzing(false);
+            setAiResult({
+                score,
+                feedback,
+                status,
+                isValid: result.isValid,
+                breakdown: result.breakdown,
+            });
+        } catch (error) {
+            console.error("AI validation failed:", error);
+            // Fallback to a simple local validation
+            const score = Math.min(Math.round(30 + content.length / 3), 70);
+            setAiResult({
+                score,
+                feedback: ["⚠️ AI service unavailable. Using basic validation."],
+                status: score >= 50 ? "Fair" : "Poor",
+                isValid: content.length >= 20,
+            });
+        } finally {
+            setIsAnalyzing(false);
+        }
     };
 
     const handleSubmit = () => {
@@ -116,14 +139,14 @@ const WriteReviewModal = ({ isOpen, onClose, onSubmit, selectedProperty: preSele
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                             {isPropertyLocked ? "Reviewing" : "Select Property / Hotel / Place"}
                         </label>
-                        
+
                         {isPropertyLocked && selectedProperty ? (
                             <div className="p-4 bg-[#6E54FF]/5 border border-[#6E54FF]/20 rounded-xl">
                                 <div className="flex items-start gap-3">
                                     <div className="w-10 h-10 bg-[#6E54FF]/10 rounded-lg flex items-center justify-center flex-shrink-0">
                                         <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-[#6E54FF]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                            <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
-                                            <circle cx="12" cy="10" r="3"/>
+                                            <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
+                                            <circle cx="12" cy="10" r="3" />
                                         </svg>
                                     </div>
                                     <div className="flex-1 min-w-0">
@@ -133,8 +156,8 @@ const WriteReviewModal = ({ isOpen, onClose, onSubmit, selectedProperty: preSele
                                         {selectedProperty.location && (
                                             <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
                                                 <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                    <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
-                                                    <circle cx="12" cy="10" r="3"/>
+                                                    <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
+                                                    <circle cx="12" cy="10" r="3" />
                                                 </svg>
                                                 {selectedProperty.location}
                                             </p>
@@ -247,28 +270,58 @@ const WriteReviewModal = ({ isOpen, onClose, onSubmit, selectedProperty: preSele
 
                     {/* AI Feedback Section */}
                     {aiResult && (
-                        <div className={`mb-6 p-4 rounded-xl border ${aiResult.status === "Excellent" ? "bg-green-50 border-green-200" :
-                            aiResult.status === "Good" ? "bg-blue-50 border-blue-200" :
-                                "bg-yellow-50 border-yellow-200"
+                        <div className={`mb-6 p-4 rounded-xl border ${!aiResult.isValid ? "bg-red-50 border-red-200" :
+                                aiResult.status === "Excellent" ? "bg-green-50 border-green-200" :
+                                    aiResult.status === "Good" ? "bg-blue-50 border-blue-200" :
+                                        "bg-yellow-50 border-yellow-200"
                             } animate-fade-in-up`}>
                             <div className="flex justify-between items-start mb-3">
                                 <div>
-                                    <h3 className={`font-bold ${aiResult.status === "Excellent" ? "text-green-800" :
-                                        aiResult.status === "Good" ? "text-blue-800" :
-                                            "text-yellow-800"
+                                    <h3 className={`font-bold ${!aiResult.isValid ? "text-red-800" :
+                                            aiResult.status === "Excellent" ? "text-green-800" :
+                                                aiResult.status === "Good" ? "text-blue-800" :
+                                                    "text-yellow-800"
                                         }`}>AI Quality Score: {aiResult.score}/100</h3>
-                                    <p className="text-xs opacity-80">{aiResult.status} Quality Review</p>
+                                    <p className="text-xs opacity-80">
+                                        {!aiResult.isValid ? "Review Needs Improvement" : `${aiResult.status} Quality Review`}
+                                    </p>
                                 </div>
-                                <div className={`px-2 py-1 rounded text-xs font-bold ${aiResult.status === "Excellent" ? "bg-green-200 text-green-800" :
-                                    aiResult.status === "Good" ? "bg-blue-200 text-blue-800" :
-                                        "bg-yellow-200 text-yellow-800"
+                                <div className={`px-2 py-1 rounded text-xs font-bold ${!aiResult.isValid ? "bg-red-200 text-red-800" :
+                                        aiResult.status === "Excellent" ? "bg-green-200 text-green-800" :
+                                            aiResult.status === "Good" ? "bg-blue-200 text-blue-800" :
+                                                "bg-yellow-200 text-yellow-800"
                                     }`}>
-                                    +{(aiResult.score * 0.5).toFixed(0)} MR Reward Est.
+                                    {aiResult.isValid ? `+${(aiResult.score * 0.5).toFixed(0)} MR Reward Est.` : "No Reward"}
                                 </div>
                             </div>
 
+                            {/* Breakdown Scores */}
+                            {aiResult.breakdown && (
+                                <div className="grid grid-cols-2 gap-3 mb-3">
+                                    {Object.entries(aiResult.breakdown).map(([key, value]) => (
+                                        <div key={key} className="flex flex-col gap-1">
+                                            <div className="flex justify-between text-xs">
+                                                <span className="capitalize text-gray-600">{key}</span>
+                                                <span className="font-medium">{value}/25</span>
+                                            </div>
+                                            <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                                                <div
+                                                    className={`h-full rounded-full transition-all ${value >= 20 ? "bg-green-500" :
+                                                            value >= 15 ? "bg-blue-500" :
+                                                                value >= 10 ? "bg-yellow-500" :
+                                                                    "bg-red-400"
+                                                        }`}
+                                                    style={{ width: `${(value / 25) * 100}%` }}
+                                                />
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
                             {aiResult.feedback.length > 0 && (
-                                <div className="space-y-1">
+                                <div className="space-y-1 border-t border-current/10 pt-3 mt-3">
+                                    <p className="text-xs font-semibold mb-2 opacity-70">AI Suggestions:</p>
                                     {aiResult.feedback.map((tip, idx) => (
                                         <div key={idx} className="flex items-start gap-2 text-sm opacity-90">
                                             <span>•</span>

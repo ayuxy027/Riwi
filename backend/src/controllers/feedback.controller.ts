@@ -2,32 +2,56 @@ import type { Request, Response } from 'express';
 import { chat, parseJsonResponse } from '../services/ai.service.js';
 import type { ValidateFeedbackRequest, ValidateFeedbackResponse, ApiResponse } from '../types/index.js';
 
-const VALIDATION_PROMPT = `You are a simple feedback validator. Determine if the text sounds like a review or feedback about a place/location.
+const VALIDATION_PROMPT = `You are a review quality analyzer. Evaluate the given review text for authenticity and quality.
 
-VALID examples (accept these):
-- "this place is nice, must visit place"
-- "great food"
-- "loved the ambiance"
-- "worst experience ever"
-- "5 stars, highly recommend"
-- "the service was slow"
-- "beautiful view"
+SCORING CRITERIA (each 0-25 points, total 0-100):
+1. AUTHENTICITY (0-25): Does it sound like a genuine personal experience? Not spam/fake?
+2. HELPFULNESS (0-25): Does it provide useful information for others?
+3. DETAIL (0-25): Are there specific details (names, features, comparisons)?
+4. CLARITY (0-25): Is it well-written and easy to understand?
 
-INVALID examples (reject these):
+VALID REVIEWS (accept these):
+- "The hotel had amazing rooftop views, breakfast was included"
+- "Fast transactions, low fees, great UI"
+- "Service was slow but food was excellent"
+- "5 stars, best experience ever, highly recommend"
+
+INVALID REVIEWS (reject these):
 - Random gibberish like "asdfghjkl"
-- Completely unrelated text like "my cat is cute"
+- Unrelated text like "my cat is cute"
 - Empty or meaningless text
 - Just numbers or symbols
 
-Be LENIENT. If it sounds like someone describing an experience at a place, mark it valid.
+Be LENIENT for isValid - if it sounds like someone describing any experience, accept it.
+Be STRICT for scoring - only high-quality detailed reviews get high scores.
 
 Respond ONLY with JSON:
-{"isValid": boolean, "reason": "brief reason", "confidence": 0.0-1.0}`;
+{
+  "isValid": boolean,
+  "reason": "brief reason if invalid",
+  "confidence": 0.0-1.0,
+  "score": 0-100,
+  "breakdown": {
+    "authenticity": 0-25,
+    "helpfulness": 0-25,
+    "detail": 0-25,
+    "clarity": 0-25
+  },
+  "feedback": ["suggestion 1", "suggestion 2"]
+}`;
 
 interface ValidationResult {
     isValid: boolean;
     reason: string;
     confidence: number;
+    score: number;
+    breakdown: {
+        authenticity: number;
+        helpfulness: number;
+        detail: number;
+        clarity: number;
+    };
+    feedback: string[];
 }
 
 /**
@@ -68,6 +92,9 @@ export async function validateFeedback(
         const responseData: ValidateFeedbackResponse = {
             isValid: result.isValid,
             confidence: result.confidence,
+            score: result.score,
+            breakdown: result.breakdown,
+            feedback: result.feedback,
         };
 
         if (!result.isValid) {

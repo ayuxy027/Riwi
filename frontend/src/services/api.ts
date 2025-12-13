@@ -55,6 +55,41 @@ export interface AIAnalysisResult {
 }
 
 // ============================================
+// AI Validation Types (Backend Integration)
+// ============================================
+
+export interface ValidationBreakdown {
+  authenticity: number; // 0-25
+  helpfulness: number;  // 0-25
+  detail: number;       // 0-25
+  clarity: number;      // 0-25
+}
+
+export interface ValidationRequest {
+  text: string;
+  locationId?: string;
+}
+
+export interface ValidationResponse {
+  isValid: boolean;
+  reason?: string;
+  confidence?: number;
+  score?: number;
+  feedback?: string[];
+  breakdown?: ValidationBreakdown;
+}
+
+export interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: {
+    code: string;
+    message: string;
+  };
+  timestamp: string;
+}
+
+// ============================================
 // Reward Tiers System
 // ============================================
 
@@ -182,6 +217,37 @@ export async function submitReview(submission: ReviewSubmission): Promise<{ succ
   return { success: true, reviewId: "mock-id-" + Date.now() };
 }
 
+/**
+ * Validate a review using AI backend
+ * Returns validation result with score and feedback
+ */
+export async function validateReview(request: ValidationRequest): Promise<ValidationResponse> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/feedback/validate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Validation failed: ${response.status}`);
+    }
+
+    const result: ApiResponse<ValidationResponse> = await response.json();
+
+    if (!result.success || !result.data) {
+      throw new Error(result.error?.message || 'Validation failed');
+    }
+
+    return result.data;
+  } catch (error) {
+    console.error('Validation error:', error);
+    throw error;
+  }
+}
+
 // ============================================
 // Helper Functions
 // ============================================
@@ -231,6 +297,7 @@ export function formatNumber(num: number): string {
 export default {
   checkHealth,
   submitReview,
+  validateReview,
   getScoreColor,
   getScoreBgColor,
   getScoreLabel,

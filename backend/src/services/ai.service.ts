@@ -23,7 +23,7 @@ export async function chat(
     const {
         model = 'llama-3.3-70b-versatile',
         temperature = 0.3,
-        maxTokens = 256,
+        maxTokens = 512,
     } = options;
 
     const response = await groq.chat.completions.create({
