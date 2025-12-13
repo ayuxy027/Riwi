@@ -81,46 +81,74 @@ export async function getUserReputation(userAddress: Address): Promise<UserReput
 }
 
 // Get user's stake status
+// NOTE: The contract reads 'stake' (index 0) but Monad's precompile stores active stake in 'deltaStake' (index 3)
+// We need to read directly from the precompile to get accurate stake amounts
 export async function getUserStake(userAddress: Address): Promise<UserStake> {
   try {
-    // Call all three functions in parallel
-    const [canReview, stakeAmount, minStake] = await Promise.all([
+    // Get validator ID and min stake from contract
+    const [validatorId, minStake] = await Promise.all([
       publicClient.readContract({
         ...reviewStakingContract,
-        functionName: 'canUserReview',
-        args: [userAddress],
-      }).catch(err => {
-        console.warn('Error calling canUserReview:', err);
-        return false;
-      }),
-      publicClient.readContract({
-        ...reviewStakingContract,
-        functionName: 'getUserStake',
-        args: [userAddress],
-      }).catch(err => {
-        console.warn('Error calling getUserStake:', err);
-        return 0n;
-      }),
+        functionName: 'getValidatorId',
+        args: [],
+      }).catch(() => 1n), // Default to 1
       publicClient.readContract({
         ...reviewStakingContract,
         functionName: 'getMinStakeAmount',
         args: [],
-      }).catch(err => {
-        console.warn('Error calling getMinStakeAmount:', err);
-        return 1000000000000000000n; // Default 1 MON
-      }),
+      }).catch(() => 1000000000000000000n), // Default 1 MON
     ]);
 
-    const stakeAmountNum = parseFloat(formatEther(stakeAmount as bigint));
-    const minStakeNum = parseFloat(formatEther(minStake as bigint));
-    const hasSufficient = (canReview as boolean) || stakeAmountNum >= minStakeNum;
+    // Read directly from staking precompile to get accurate stake
+    const STAKING_PRECOMPILE = '0x0000000000000000000000000000000000001000' as Address;
+    const stakingABI = [
+      {
+        name: 'getDelegator',
+        type: 'function',
+        stateMutability: 'nonpayable',
+        inputs: [
+          { name: 'validatorId', type: 'uint64' },
+          { name: 'delegator', type: 'address' }
+        ],
+        outputs: [
+          { name: 'stake', type: 'uint256' },
+          { name: 'accRewardPerToken', type: 'uint256' },
+          { name: 'unclaimedRewards', type: 'uint256' },
+          { name: 'deltaStake', type: 'uint256' }, // This is the active stake!
+          { name: 'nextDeltaStake', type: 'uint256' },
+          { name: 'deltaEpoch', type: 'uint64' },
+          { name: 'nextDeltaEpoch', type: 'uint64' }
+        ],
+      },
+    ] as const;
 
-    console.log('Stake data fetched:', {
+    // Call precompile directly to get accurate stake data
+    const delegatorData = await publicClient.readContract({
+      address: STAKING_PRECOMPILE,
+      abi: stakingABI,
+      functionName: 'getDelegator',
+      args: [Number(validatorId), userAddress],
+    }) as [bigint, bigint, bigint, bigint, bigint, bigint, bigint];
+
+    // Extract stake amounts - use deltaStake (index 3) as it's the active stake
+    const stakeAmount = delegatorData[0]; // stake (may be 0)
+    const deltaStake = delegatorData[3]; // deltaStake (active stake)
+    
+    // Use deltaStake if stake is 0, otherwise use stake
+    const activeStake = deltaStake > 0n ? deltaStake : stakeAmount;
+    
+    const stakeAmountNum = parseFloat(formatEther(activeStake));
+    const minStakeNum = parseFloat(formatEther(minStake as bigint));
+    const hasSufficient = stakeAmountNum >= minStakeNum;
+
+    console.log('Stake data fetched from precompile:', {
       address: userAddress,
-      stakeAmount: stakeAmountNum,
+      stake: parseFloat(formatEther(stakeAmount)),
+      deltaStake: parseFloat(formatEther(deltaStake)),
+      activeStake: stakeAmountNum,
       minStake: minStakeNum,
       hasSufficient,
-      canReview: canReview as boolean,
+      validatorId: Number(validatorId),
     });
 
     return {
