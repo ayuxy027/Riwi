@@ -264,7 +264,7 @@ const Profile = () => {
                                             const qualityScore = Number(review.qualityScore || 0n);
                                             const rewardAmount = review.rewardAmount || 0n;
                                             const reward = parseFloat(formatEther(rewardAmount));
-                                            const status = review.validated ? "Verified" : "Pending";
+                                            const status = review.validated ? "Verified ✓" : "Awaiting Validation";
                                             // Show full content, not just preview
                                             const reviewContent = review.content || "No content available";
                                             const contentPreview = reviewContent.length > 100 ? reviewContent.substring(0, 100) + "..." : reviewContent;
@@ -277,7 +277,7 @@ const Profile = () => {
                                                     transition={{ delay: 0.5 + i * 0.1 }}
                                                     className="flex items-start gap-4 p-4 bg-white border border-gray-100 rounded-xl hover:border-[#6E54FF]/30 hover:shadow-sm transition-all group"
                                                 >
-                                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${status === "Verified" ? "bg-green-100 text-green-700" : "bg-[#6E54FF]/5 text-[#6E54FF]"}`}>
+                                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${status === "Verified ✓" ? "bg-green-100 text-green-700" : "bg-[#6E54FF]/5 text-[#6E54FF]"}`}>
                                                         <Icons.FileText />
                                                     </div>
                                                     <div className="flex-1 min-w-0">
@@ -285,14 +285,14 @@ const Profile = () => {
                                                             <p className="font-medium text-gray-900 group-hover:text-[#6E54FF] transition-colors">
                                                                 Review #{i + 1}
                                                             </p>
-                                                            {status === "Verified" && (
+                                                            {status === "Verified ✓" && (
                                                                 <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs font-bold">
                                                                     ✓ Verified
                                                                 </span>
                                                             )}
-                                                            {status === "Pending" && (
+                                                            {status === "Awaiting Validation" && (
                                                                 <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded text-xs font-bold">
-                                                                    ⏳ Pending
+                                                                    ⏳ Awaiting Validation
                                                                 </span>
                                                             )}
                                                         </div>

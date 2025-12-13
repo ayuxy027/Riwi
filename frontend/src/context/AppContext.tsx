@@ -197,7 +197,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
       const newBalance = balance.status === "fulfilled" ? balance.value : null;
       const newReputation = reputation.status === "fulfilled" ? reputation.value.reputationScore : null;
-      const newTotalReviews = reputation.status === "fulfilled" ? reputation.value.totalReviews : null;
       const newStakedAmount = stake.status === "fulfilled" ? stake.value.currentStake : null;
       const newHasSufficientStake = stake.status === "fulfilled" ? stake.value.hasSufficientStake : null;
 
@@ -211,10 +210,14 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         reviews = []; // Ensure we have an empty array
       }
 
+      // Use actual review count from reviews array, not from ReputationSystem
+      // ReputationSystem only tracks VALIDATED reviews, but we want ALL reviews
+      const actualReviewCount = reviews.length;
+
       setBlockchain({
         balance: newBalance,
         reputation: newReputation,
-        totalReviews: newTotalReviews,
+        totalReviews: actualReviewCount, // Use actual review count from ReviewPlatform
         stakedAmount: newStakedAmount,
         hasSufficientStake: newHasSufficientStake,
         reviews,
