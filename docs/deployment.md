@@ -1,287 +1,110 @@
-# Deployment Documentation
+# Contract Deployment Knowledge Transfer
 
-## Overview
+## Deployment Status (Testnet)
 
-This document provides comprehensive documentation for the deployment process of the Monad AI Review System smart contracts. The deployment script (`deploy.sh`) has been thoroughly tested and debugged to ensure reliable contract deployment on the Monad testnet.
+**✅ Successfully deployed to Monad Testnet**
 
-## Deployment Script: `deploy.sh`
+The contract suite has been successfully deployed to the Monad testnet. All contracts are live and integrated on the testnet.
 
-### Purpose
-The `deploy.sh` script automates the complete deployment of all smart contracts required for the AI-assisted review system on Monad blockchain, including proper integration setup.
+## Deployed Contract Addresses (Monad Testnet)
 
-### Prerequisites
-
-1. **Foundry Tools**: 
-   - `forge` (version 1.5.0-stable or compatible)
-   - `cast` (version 1.5.0-stable or compatible)
-   - Install via: `foundryup`
-
-2. **Dependencies**:
-   - `jq` (for JSON parsing - though not currently used)
-   - `grep` and `awk` (standard Unix tools)
-
-3. **Network Access**:
-   - Access to Monad testnet RPC: `https://testnet-rpc.monad.xyz`
-   - Valid private key with sufficient testnet funds
-
-4. **Contract Compilation**:
-   - Contracts must compile successfully: `forge build`
-   - OpenZeppelin contracts must be installed
-
-### Configuration
-
-The script uses the following environment variables:
-
-```bash
-PRIVATE_KEY="4a47ba7832de1108ac36732015fd28c10a05b61c772e594e419f848b0b53bdb6"  # ⚠️ TESTNET ONLY
-RPC_URL="https://testnet-rpc.monad.xyz"
-```
-
-**⚠️ SECURITY WARNING**: The private key in the script is for TESTNET/LOCAL use only. Never use production keys in deployment scripts.
-
-### Deployment Process
-
-The script deploys contracts in the following order:
-
-#### 1. ReviewToken
-- **Contract**: `contracts/tokens/ReviewToken.sol:ReviewToken`
-- **Constructor Args**: None
-- **Initial Supply**: 1,000,000 RVT tokens minted to deployer
-- **Purpose**: ERC-20 token for review rewards
-
-#### 2. ReputationSystem
-- **Contract**: `contracts/reputation/ReputationSystem.sol:ReputationSystem`
-- **Constructor Args**: None
-- **Purpose**: Tracks user reputation scores based on review quality
-
-#### 3. ReviewStaking
-- **Contract**: `contracts/staking/ReviewStaking.sol:ReviewStaking`
-- **Constructor Args**: 
-  - `validatorId`: `1`
-  - `minStakeAmount`: `1000000000000000000` (1 token in wei)
-- **Purpose**: Integrates with Monad staking precompile to verify user stakes
-
-#### 4. ReviewPlatform
-- **Contract**: `contracts/reviews/ReviewPlatform.sol:ReviewPlatform`
-- **Constructor Args**: 
-  - `_tokenAddress`: ReviewToken address (from step 1)
-  - `_reputationAddress`: ReputationSystem address (from step 2)
-  - `_stakingAddress`: ReviewStaking address (from step 3)
-- **Purpose**: Main platform contract that orchestrates review submission, validation, and rewards
-
-### Integration Setup
-
-After deploying all contracts, the script automatically configures integrations:
-
-1. **Transfer ReviewToken Ownership**:
-   - Transfers ownership from deployer to ReviewPlatform
-   - Enables ReviewPlatform to call `mintForReview()` for reward distribution
-
-2. **Transfer ReputationSystem Ownership**:
-   - Transfers ownership from deployer to ReviewPlatform
-   - Enables ReviewPlatform to call `updateReputationWithScore()` for reputation updates
-
-### Technical Details
-
-#### Transaction Type
-- **Legacy Transactions**: The script uses `--legacy` flag for all deployments
-- **Reason**: Monad testnet does not support EIP-1559 fee mechanism
-- **Impact**: All transactions use legacy gas pricing
-
-#### Address Extraction
-- The script uses `grep` and `awk` to extract deployed addresses from forge output
-- Format: `grep "Deployed to:" | awk '{print $3}'`
-- This approach is more reliable than JSON parsing across different forge versions
-
-#### Error Handling
-- Script uses `set -euo pipefail` for strict error handling
-- Each deployment is validated to ensure address capture succeeded
-- Script exits immediately on any deployment failure
-
-### Usage
-
-```bash
-# Make script executable (if not already)
-chmod +x deploy.sh
-
-# Run deployment
-./deploy.sh
-```
-
-### Expected Output
+The following are the actual deployed contract addresses on Monad testnet:
 
 ```
-Using RPC: https://testnet-rpc.monad.xyz
-Deploying ReviewToken...
-ReviewToken deployed at: 0x...
-Deploying ReputationSystem...
-ReputationSystem deployed at: 0x...
-Deploying ReviewStaking...
-ReviewStaking deployed at: 0x...
-Deploying ReviewPlatform...
-ReviewPlatform deployed at: 0x...
-
-Setting up integrations...
-Transferring ReviewToken ownership to ReviewPlatform...
-Transferring ReputationSystem ownership to ReviewPlatform...
-Integrations configured successfully!
-==============================
-Deployment complete!
-ReviewToken:        0x...
-ReputationSystem:   0x...
-ReviewStaking:      0x...
-ReviewPlatform:     0x...
-==============================
+ReviewToken:        0x9Ce50706CD0F73bB5502b7AA0a8cD17D8513de83          # ERC-20 reward token
+ReputationSystem:   0xF158be31A900cA8B2Be13BBd22D9d81E64764DBC          # Reputation tracking
+ReviewStaking:      0x51F7cbd74731976d834a67F156dBC387CCc59c1D          # Staking verification
+ReviewPlatform:     0x40C11dF88eEf1B1276978b750e315E49A929D10d          # Main orchestration
 ```
+
+### Network Information
+- **Network**: Monad Testnet
+- **RPC URL**: `https://testnet-rpc.monad.xyz`
+- **Chain ID**: 10143
+- **Deployment Date**: December 2024
 
 ### Verification
 
-After deployment, verify the setup:
+You can verify these contracts on the Monad testnet explorer or interact with them using:
 
-1. **Check Contract Owners**:
-   ```bash
-   cast call <REVIEW_TOKEN_ADDR> "owner()" --rpc-url $RPC_URL --legacy
-   cast call <REPUTATION_ADDR> "owner()" --rpc-url $RPC_URL --legacy
-   ```
-   Both should return the ReviewPlatform address.
+```bash
+# Check ReviewToken owner (should be ReviewPlatform)
+cast call 0x9Ce50706CD0F73bB5502b7AA0a8cD17D8513de83 "owner()" \
+  --rpc-url https://testnet-rpc.monad.xyz --legacy
 
-2. **Verify Contract Addresses in ReviewPlatform**:
-   ```bash
-   cast call <PLATFORM_ADDR> "reviewToken()" --rpc-url $RPC_URL --legacy
-   cast call <PLATFORM_ADDR> "reputationSystem()" --rpc-url $RPC_URL --legacy
-   cast call <PLATFORM_ADDR> "reviewStaking()" --rpc-url $RPC_URL --legacy
-   ```
+# Check ReputationSystem owner (should be ReviewPlatform)
+cast call 0xF158be31A900cA8B2Be13BBd22D9d81E64764DBC "owner()" \
+  --rpc-url https://testnet-rpc.monad.xyz --legacy
 
-## Issues Fixed During Development
-
-### Issue 1: EIP-1559 Not Supported
-**Problem**: Initial deployment failed with error: "Failed to estimate EIP1559 fees"
-**Solution**: Added `--legacy` flag to all `forge create` commands
-**Status**: ✅ Fixed
-
-### Issue 2: JSON Parsing Failure
-**Problem**: `jq` parsing failed when forge output wasn't valid JSON
-**Solution**: Replaced `--json | jq` with `grep` and `awk` for address extraction
-**Status**: ✅ Fixed
-
-### Issue 3: Missing Integration Setup
-**Problem**: ReviewPlatform couldn't call ReviewToken and ReputationSystem functions
-**Solution**: Added ownership transfer steps after deployment
-**Status**: ✅ Fixed
-
-### Issue 4: No Error Validation
-**Problem**: Script could continue even if address extraction failed
-**Solution**: Added validation checks after each deployment
-**Status**: ✅ Fixed
-
-## Contract Architecture
-
-```
-┌─────────────────┐
-│ ReviewPlatform  │ (Main Orchestrator)
-│                 │
-│  - submitReview │
-│  - validateReview│
-└────────┬────────┘
-         │
-         ├─────────────────┬─────────────────┐
-         │                 │                 │
-         ▼                 ▼                 ▼
-┌──────────────┐  ┌──────────────┐  ┌──────────────┐
-│ ReviewToken  │  │ Reputation   │  │ ReviewStaking│
-│              │  │ System       │  │              │
-│ - mintFor    │  │ - update     │  │ - verifyStake│
-│   Review     │  │   Reputation │  │ - canUser    │
-│              │  │              │  │   Review     │
-└──────────────┘  └──────────────┘  └──────────────┘
+# Check ReviewPlatform contract addresses
+cast call 0x40C11dF88eEf1B1276978b750e315E49A929D10d "reviewToken()" \
+  --rpc-url https://testnet-rpc.monad.xyz --legacy
+cast call 0x40C11dF88eEf1B1276978b750e315E49A929D10d "reputationSystem()" \
+  --rpc-url https://testnet-rpc.monad.xyz --legacy
+cast call 0x40C11dF88eEf1B1276978b750e315E49A929D10d "reviewStaking()" \
+  --rpc-url https://testnet-rpc.monad.xyz --legacy
 ```
 
-### Integration Flow
+## Contract Functions Overview
 
-1. **User Submits Review**:
-   - ReviewPlatform checks stake via ReviewStaking
-   - If valid, review is stored
+The deployed system consists of 4 interconnected smart contracts:
 
-2. **Review Validation**:
-   - AI/Validator calls `validateReview()` on ReviewPlatform
-   - ReviewPlatform:
-     - Mints tokens via ReviewToken (requires ownership)
-     - Updates reputation via ReputationSystem (requires ownership)
+### 1. ReviewToken.sol - ERC-20 Reward Token
+- **Purpose**: RVT (Review Token) for reward distribution
+- **Key Functions**:
+  - `mintForReview(address reviewer, uint256 amount)` - Mints rewards for validated reviews
+  - `transfer()` - Restricted to owner for security
+  - Standard ERC-20 functions (balanceOf, totalSupply, etc.)
+- **Initial Supply**: 1,000,000 RVT tokens minted to deployer
+- **Access Control**: Only owner can mint tokens (ReviewPlatform after deployment)
 
-## Deployment Checklist
+### 2. ReputationSystem.sol - User Reputation Tracking
+- **Purpose**: Tracks and manages user reputation based on review quality
+- **Key Functions**:
+  - `updateReputation(address user, bool goodReview)` - Basic reputation update
+  - `updateReputationWithScore(address user, uint256 qualityScore)` - Quality-based scoring (0-100)
+  - `getReputation(address user)` - Get user's reputation score
+  - `getReviewHistory(address user)` - Get user's review history
+  - `getUserStats(address user)` - Get complete user statistics
+- **Features**: Quality-based scoring, history tracking, reputation history
 
-- [x] Contracts compile successfully
-- [x] Foundry tools installed and accessible
-- [x] RPC endpoint accessible
-- [x] Private key configured (testnet only)
-- [x] All contracts deployed successfully
-- [x] Ownership transfers completed
-- [x] Integration verified
-- [x] Contract addresses documented
+### 3. ReviewStaking.sol - Monad Staking Integration
+- **Purpose**: Verifies user stakes using Monad's staking precompile
+- **Key Functions**:
+  - `canUserReview(address user)` - Check if user can submit reviews
+  - `verifyStake(address user)` - Verify user's stake amount
+  - `getUserStake(address user)` - Get actual stake amount
+  - `setValidatorId(uint64 _newValidatorId)` - Update validator ID
+  - `setMinStakeAmount(uint256 _newMinStakeAmount)` - Update minimum stake
+- **Integration**: Interfaces with Monad's staking precompile at `0x0000000000000000000000000000000000001000`
+- **Configuration**: Validator ID (default: 1), Minimum stake amount (default: 1 token)
 
-## Production Deployment Considerations
+### 4. ReviewPlatform.sol - Main Platform Orchestrator
+- **Purpose**: Main contract managing the complete review lifecycle
+- **Key Functions**:
+  - `submitReview(string calldata content)` - Submit a review (requires stake verification)
+  - `validateReview(bytes32 reviewId, uint256 rewardAmount, uint256 qualityScore)` - Validate and reward reviews
+  - `batchValidateReviews()` - Process multiple reviews at once
+  - `getReview(bytes32 reviewId)` - Get review details
+  - `getReviewsByUser(address user)` - Get all reviews by a user
+- **Orchestration**: Manages all contract interactions, handles AI validation callbacks
+- **Access Control**: Only owner can validate reviews (AI service access)
 
-Before deploying to production:
+## Integration Flow
 
-1. **Security**:
-   - Remove hardcoded private key from script
-   - Use environment variables or secure key management
-   - Verify all contract addresses before ownership transfers
+```
+1. User submits review → ReviewPlatform.checks ReviewStaking.canUserReview() →
+2. If valid stake → Review stored with pending status →
+3. AI validates review → AI calls ReviewPlatform.validateReview() →
+4. ReviewPlatform calls ReviewToken.mintForReview() → User receives RVT tokens
+5. ReviewPlatform calls ReputationSystem.updateReputationWithScore() → User reputation updated
+```
 
-2. **Configuration**:
-   - Update RPC URL to production endpoint
-   - Review and adjust constructor parameters
-   - Set appropriate minimum stake amounts
+## Key Features
 
-3. **Testing**:
-   - Test on testnet first
-   - Verify all integrations work correctly
-   - Test edge cases and error scenarios
-
-4. **Documentation**:
-   - Document all deployed contract addresses
-   - Save transaction hashes for verification
-   - Update frontend configuration with new addresses
-
-## Troubleshooting
-
-### Deployment Fails with "Internal transport error"
-- **Cause**: Network connectivity issues or RPC endpoint problems
-- **Solution**: Verify RPC endpoint is accessible, retry deployment
-
-### Address Extraction Returns Empty
-- **Cause**: Forge output format changed or deployment failed
-- **Solution**: Check forge output manually, verify deployment succeeded
-
-### Ownership Transfer Fails
-- **Cause**: Insufficient gas or incorrect function signature
-- **Solution**: Verify contract ABI, check gas limits, ensure deployer is current owner
-
-### Contracts Not Integrated
-- **Cause**: Ownership transfers not completed
-- **Solution**: Manually verify owners, re-run ownership transfer commands
-
-## Related Files
-
-- `deploy.sh` - Main deployment script
-- `contracts/tokens/ReviewToken.sol` - Token contract
-- `contracts/reputation/ReputationSystem.sol` - Reputation contract
-- `contracts/staking/ReviewStaking.sol` - Staking contract
-- `contracts/reviews/ReviewPlatform.sol` - Main platform contract
-
-## Version History
-
-- **v1.0** (Current): Initial deployment script with full integration setup
-  - Fixed EIP-1559 compatibility
-  - Fixed address extraction
-  - Added ownership transfers
-  - Added error validation
-
-## Support
-
-For issues or questions regarding deployment:
-1. Check this documentation
-2. Review contract source code
-3. Verify network connectivity
-4. Check Foundry version compatibility
-
+- **AI Integration Ready**: Contracts prepared for AI validation system with quality scoring
+- **Monad Native**: Direct staking precompile integration for user commitment verification
+- **Quality Focused**: Reputation and reward system based on review quality (0-100 scoring)
+- **Scalable**: Designed for high-volume review processing with batch operations
+- **Secure**: Proper access controls, ownership transfers after deployment
+- **Economic**: Quality-based rewards (higher quality = more tokens)
