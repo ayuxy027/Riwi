@@ -260,14 +260,12 @@ export async function submitReview(content: string, walletClient: WalletClient, 
       throw new Error('User address not available');
     }
 
-    const canReview = await publicClient.readContract({
-      ...reviewStakingContract,
-      functionName: 'canUserReview',
-      args: [userAddress],
-    });
-
-    if (!canReview) {
-      throw new Error('Insufficient stake. You need to stake tokens to submit reviews.');
+    // Check stake directly from precompile (same logic as getUserStake)
+    // The contract's canUserReview reads wrong field, so we check ourselves
+    const stakeData = await getUserStake(userAddress);
+    
+    if (!stakeData.hasSufficientStake) {
+      throw new Error(`Insufficient stake. You have ${stakeData.currentStake.toFixed(2)} MON staked, but need at least ${stakeData.minStakeAmount.toFixed(2)} MON to submit reviews.`);
     }
 
     // Submit review transaction
