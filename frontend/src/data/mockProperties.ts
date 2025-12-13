@@ -35,6 +35,22 @@ export const MOCK_PROPERTIES: Property[] = [
     description: "Premium business hotel with conference facilities",
     location: "Financial District"
   },
+  {
+    id: "hotel-4",
+    name: "The Validator Resort",
+    type: "hotel",
+    category: "Resort",
+    description: "Beachfront resort with stunning ocean views",
+    location: "Coastal Area"
+  },
+  {
+    id: "hotel-5",
+    name: "Staking Heights",
+    type: "hotel",
+    category: "Boutique Hotel",
+    description: "Elegant boutique hotel with rooftop bar",
+    location: "Historic Quarter"
+  },
   // Restaurants
   {
     id: "restaurant-1",
@@ -60,6 +76,46 @@ export const MOCK_PROPERTIES: Property[] = [
     description: "Authentic Asian cuisine with modern twist",
     location: "Cultural District"
   },
+  {
+    id: "restaurant-4",
+    name: "Hash Function Grill",
+    type: "restaurant",
+    category: "Steakhouse",
+    description: "Premium steakhouse with aged beef and fine wines",
+    location: "Financial District"
+  },
+  {
+    id: "restaurant-5",
+    name: "Merkle Tree Pizzeria",
+    type: "restaurant",
+    category: "Italian",
+    description: "Authentic Italian pizzeria with wood-fired oven",
+    location: "Little Italy"
+  },
+  {
+    id: "restaurant-6",
+    name: "Consensus Sushi",
+    type: "restaurant",
+    category: "Japanese",
+    description: "High-end sushi restaurant with omakase menu",
+    location: "Riverside"
+  },
+  {
+    id: "restaurant-7",
+    name: "Proof of Stake Bakery",
+    type: "restaurant",
+    category: "Bakery",
+    description: "Artisan bakery with fresh bread and pastries",
+    location: "Arts Quarter"
+  },
+  {
+    id: "restaurant-8",
+    name: "Gas Limit Bistro",
+    type: "restaurant",
+    category: "French",
+    description: "Classic French bistro with traditional cuisine",
+    location: "Historic Center"
+  },
   // Attractions
   {
     id: "attraction-1",
@@ -83,6 +139,30 @@ export const MOCK_PROPERTIES: Property[] = [
     type: "attraction",
     category: "Tech Center",
     description: "Co-working space and innovation center",
+    location: "Tech District"
+  },
+  {
+    id: "attraction-4",
+    name: "Decentralized Park",
+    type: "attraction",
+    category: "Park",
+    description: "Beautiful public park with walking trails and gardens",
+    location: "Riverside"
+  },
+  {
+    id: "attraction-5",
+    name: "Smart Contract Theater",
+    type: "attraction",
+    category: "Theater",
+    description: "Historic theater hosting plays and concerts",
+    location: "Arts Quarter"
+  },
+  {
+    id: "attraction-6",
+    name: "Blockchain Science Center",
+    type: "attraction",
+    category: "Science Museum",
+    description: "Interactive science center with hands-on exhibits",
     location: "Tech District"
   },
   // Services/Protocols

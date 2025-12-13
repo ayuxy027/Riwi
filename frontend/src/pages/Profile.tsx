@@ -226,7 +226,7 @@ const Profile = () => {
                                 className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12"
                             >
                                 <StatCard icon={Icons.FileText} label="Reviews" value={totalReviews} />
-                                <StatCard icon={Icons.Coins} label="RVT Earned" value={tokensEarned.toFixed(2)} />
+                                <StatCard icon={Icons.Coins} label="RVT Balance" value={tokensEarned.toFixed(2)} />
                                 <StatCard icon={Icons.Trophy} label="Reputation" value={reputation} />
                                 <StatCard icon={Icons.ThumbsUp} label="Staked" value={`${blockchain.stakedAmount?.toFixed(2) || "0.00"} MON`} />
                             </motion.div>

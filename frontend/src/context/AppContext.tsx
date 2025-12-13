@@ -8,8 +8,9 @@ import {
 } from "react";
 import { type Address } from "viem";
 import { connectWallet, disconnectWallet as disconnectWalletService, getCurrentAccount, onAccountsChanged, onChainChanged, isMetaMaskInstalled } from "../services/walletService";
-import { getUserBalance, getUserReputation, getUserStake, getUserReviews, submitReview as submitReviewService, type Review } from "../services/blockchainService";
+import { getUserBalance, getUserReputation, getUserStake, getUserReviews, submitReview as submitReviewService, stakeTokens as stakeTokensService, type Review } from "../services/blockchainService";
 import type { WalletClient } from "viem";
+import type { TransactionStatus } from "../components/TransactionToast";
 
 // ============================================
 // Types & Interfaces
@@ -37,12 +38,15 @@ interface AppContextType {
   blockchain: BlockchainState;
   isLoading: boolean;
   walletClient: WalletClient | null;
+  transaction: TransactionStatus | null;
 
   // Wallet actions
   connectWallet: () => Promise<void>;
   disconnectWallet: () => void;
   refreshUserData: () => Promise<void>;
   submitReview: (content: string) => Promise<string>;
+  stakeTokens: (amount: string) => Promise<string>;
+  clearTransaction: () => void;
 
   // Navigation helpers
   currentPage: string;
@@ -70,10 +74,13 @@ export const AppContext = createContext<AppContextType>({
   blockchain: DEFAULT_BLOCKCHAIN_STATE,
   isLoading: false,
   walletClient: null,
+  transaction: null,
   connectWallet: async () => {},
   disconnectWallet: () => {},
   refreshUserData: async () => {},
   submitReview: async () => "",
+  stakeTokens: async () => "",
+  clearTransaction: () => {},
   currentPage: "home",
   setCurrentPage: () => {},
 });
@@ -88,6 +95,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<UserProfile>(DEFAULT_USER);
   const [blockchain, setBlockchain] = useState<BlockchainState>(DEFAULT_BLOCKCHAIN_STATE);
   const [walletClient, setWalletClient] = useState<WalletClient | null>(null);
+  const [transaction, setTransaction] = useState<TransactionStatus | null>(null);
 
   // Check for existing connection on mount
   useEffect(() => {
@@ -152,6 +160,11 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   }, [user.address, user.connected]);
 
   const handleConnect = useCallback(async () => {
+    // Prevent multiple simultaneous connection attempts
+    if (isLoading) {
+      return;
+    }
+
     setIsLoading(true);
     setBlockchain(prev => ({ ...prev, error: null, isLoading: true }));
 
@@ -170,10 +183,12 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         isLoading: false,
       }));
       console.error("Error connecting wallet:", error);
+      // Re-throw to allow UI to handle it
+      throw error;
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [isLoading]);
 
   const handleDisconnect = useCallback(() => {
     disconnectWalletService();
@@ -228,15 +243,65 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [user.address]);
 
+  const stakeTokens = useCallback(async (amount: string): Promise<string> => {
+    if (!walletClient || !user.address) {
+      throw new Error("Wallet must be connected to stake tokens");
+    }
+
+    setBlockchain(prev => ({ ...prev, isLoading: true, error: null }));
+    setTransaction({
+      status: "pending",
+      message: "Staking MON tokens...",
+    });
+
+    try {
+      const txHash = await stakeTokensService(amount, walletClient);
+      
+      setTransaction({
+        status: "success",
+        message: "Tokens staked successfully!",
+        txHash,
+      });
+      
+      // Refresh user data after staking
+      await refreshUserData();
+      
+      setBlockchain(prev => ({ ...prev, isLoading: false }));
+      return txHash;
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to stake tokens";
+      setTransaction({
+        status: "error",
+        message: errorMessage,
+      });
+      setBlockchain(prev => ({
+        ...prev,
+        isLoading: false,
+        error: errorMessage,
+      }));
+      throw error;
+    }
+  }, [walletClient, user.address, refreshUserData]);
+
   const submitReview = useCallback(async (content: string): Promise<string> => {
     if (!walletClient || !user.address) {
       throw new Error("Wallet must be connected to submit review");
     }
 
     setBlockchain(prev => ({ ...prev, isLoading: true, error: null }));
+    setTransaction({
+      status: "pending",
+      message: "Submitting review to blockchain...",
+    });
 
     try {
       const txHash = await submitReviewService(content, walletClient);
+      
+      setTransaction({
+        status: "success",
+        message: "Review submitted successfully!",
+        txHash,
+      });
       
       // Refresh user data after submission
       await refreshUserData();
@@ -245,6 +310,10 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       return txHash;
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : "Failed to submit review";
+      setTransaction({
+        status: "error",
+        message: errorMessage,
+      });
       setBlockchain(prev => ({
         ...prev,
         isLoading: false,
@@ -259,10 +328,13 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     blockchain,
     isLoading,
     walletClient,
+    transaction,
     connectWallet: handleConnect,
     disconnectWallet: handleDisconnect,
     refreshUserData,
     submitReview,
+    stakeTokens,
+    clearTransaction: () => setTransaction(null),
     currentPage,
     setCurrentPage,
   };

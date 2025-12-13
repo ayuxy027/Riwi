@@ -53,10 +53,15 @@ export async function connectWallet(): Promise<WalletConnection> {
   }
 
   try {
-    // Request account access
-    const accounts = await window.ethereum.request({
-      method: 'eth_requestAccounts',
-    });
+    // Request account access with timeout protection
+    const accounts = await Promise.race([
+      window.ethereum.request({
+        method: 'eth_requestAccounts',
+      }),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Connection timeout. Please try again.')), 10000)
+      )
+    ]) as string[];
 
     if (!accounts || accounts.length === 0) {
       throw new Error('No accounts found. Please unlock your wallet.');
@@ -146,34 +151,48 @@ export async function getCurrentAccount(): Promise<Address | null> {
 
 // Listen for account changes
 export function onAccountsChanged(callback: (accounts: Address[]) => void): () => void {
-  if (!isMetaMaskInstalled()) {
+  if (!isMetaMaskInstalled() || !window.ethereum) {
     return () => {};
   }
 
-  window.ethereum.on('accountsChanged', (accounts: string[]) => {
+  const handler = (accounts: string[]) => {
     callback(accounts as Address[]);
-  });
+  };
+
+  window.ethereum.on('accountsChanged', handler);
 
   // Return cleanup function
   return () => {
-    if (window.ethereum.removeListener) {
-      window.ethereum.removeListener('accountsChanged', callback);
+    if (window.ethereum && window.ethereum.removeListener) {
+      try {
+        window.ethereum.removeListener('accountsChanged', handler);
+      } catch (error) {
+        console.warn('Error removing accountsChanged listener:', error);
+      }
     }
   };
 }
 
 // Listen for chain changes
 export function onChainChanged(callback: (chainId: string) => void): () => void {
-  if (!isMetaMaskInstalled()) {
+  if (!isMetaMaskInstalled() || !window.ethereum) {
     return () => {};
   }
 
-  window.ethereum.on('chainChanged', callback);
+  const handler = (chainId: string) => {
+    callback(chainId);
+  };
+
+  window.ethereum.on('chainChanged', handler);
 
   // Return cleanup function
   return () => {
-    if (window.ethereum.removeListener) {
-      window.ethereum.removeListener('chainChanged', callback);
+    if (window.ethereum && window.ethereum.removeListener) {
+      try {
+        window.ethereum.removeListener('chainChanged', handler);
+      } catch (error) {
+        console.warn('Error removing chainChanged listener:', error);
+      }
     }
   };
 }

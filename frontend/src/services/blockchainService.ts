@@ -1,5 +1,6 @@
 import { formatEther, parseEther, type Address, type WalletClient } from 'viem';
 import { publicClient, reviewTokenContract, reputationSystemContract, reviewStakingContract, reviewPlatformContract } from './contractService';
+import { DEPLOYER_ADDRESS } from "../config/constants";
 
 export interface UserReputation {
   reputationScore: number;
@@ -22,15 +23,25 @@ export interface Review {
   qualityScore: bigint;
 }
 
-// Get user's token balance
-export async function getUserBalance(userAddress: Address): Promise<number> {
+// Get user's token balance (excluding initial deployer mint for display)
+export async function getUserBalance(userAddress: Address, excludeDeployerMint: boolean = true): Promise<number> {
   try {
     const balance = await publicClient.readContract({
       ...reviewTokenContract,
       functionName: 'balanceOf',
       args: [userAddress],
     });
-    return parseFloat(formatEther(balance));
+    
+    const balanceNumber = parseFloat(formatEther(balance));
+    
+    // If this is the deployer and we want to exclude initial mint, return 0 for earned display
+    // The deployer's 1M tokens are for distribution, not "earned"
+    if (excludeDeployerMint && userAddress.toLowerCase() === DEPLOYER_ADDRESS.toLowerCase()) {
+      // For deployer, show 0 as "earned" - the 1M is for distribution, not personal earnings
+      return 0;
+    }
+    
+    return balanceNumber;
   } catch (error) {
     console.error('Error getting user balance:', error);
     throw error;
@@ -128,6 +139,55 @@ export async function getUserReviews(userAddress: Address): Promise<Review[]> {
     return reviews;
   } catch (error) {
     console.error('Error getting user reviews:', error);
+    throw error;
+  }
+}
+
+// Stake MON tokens with validator (required to submit reviews)
+export async function stakeTokens(amount: string, walletClient: WalletClient): Promise<string> {
+  try {
+    if (!walletClient.account?.address) {
+      throw new Error('Wallet account not available');
+    }
+
+    // Get validator ID from ReviewStaking contract
+    const validatorId = await publicClient.readContract({
+      ...reviewStakingContract,
+      functionName: 'getValidatorId',
+      args: [],
+    }) as bigint;
+
+    // Monad staking precompile address
+    const STAKING_PRECOMPILE = '0x0000000000000000000000000000000000001000' as Address;
+    
+    // ABI for delegate function
+    const stakingABI = [
+      {
+        name: 'delegate',
+        type: 'function',
+        stateMutability: 'payable',
+        inputs: [{ name: 'validatorId', type: 'uint64' }],
+        outputs: [{ name: 'success', type: 'bool' }],
+      },
+    ] as const;
+
+    // Convert amount to wei
+    const amountWei = parseEther(amount);
+
+    // Call delegate function with MON tokens
+    const hash = await walletClient.writeContract({
+      address: STAKING_PRECOMPILE,
+      abi: stakingABI,
+      functionName: 'delegate',
+      args: [Number(validatorId)],
+      value: amountWei,
+    });
+
+    // Wait for transaction receipt
+    const receipt = await publicClient.waitForTransactionReceipt({ hash });
+    return receipt.transactionHash;
+  } catch (error) {
+    console.error('Error staking tokens:', error);
     throw error;
   }
 }

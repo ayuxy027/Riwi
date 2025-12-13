@@ -3,6 +3,7 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { useApp, truncateAddress } from "../context/AppContext";
 import WriteReviewModal, { type ReviewSubmissionData } from "../components/WriteReviewModal";
+import { TransactionToast } from "../components/TransactionToast";
 import { formatEther } from "viem";
 import type { Review } from "../services/blockchainService";
 
@@ -147,8 +148,10 @@ const ReviewHistoryItem = ({ review }: { review: Review }) => {
 // ============================================
 
 const Dashboard = () => {
-    const { user, blockchain, connectWallet, submitReview, refreshUserData, isLoading } = useApp();
+    const { user, blockchain, connectWallet, submitReview, stakeTokens, refreshUserData, isLoading, transaction, clearTransaction } = useApp();
     const [isReviewOpen, setIsReviewOpen] = useState(false);
+    const [isStakingOpen, setIsStakingOpen] = useState(false);
+    const [stakeAmount, setStakeAmount] = useState("1");
 
     useEffect(() => {
         if (user.connected && user.address) {
@@ -189,7 +192,7 @@ const Dashboard = () => {
                                 )}
                             </p>
                         </div>
-                        {user.connected ? (
+                        {user.connected && (
                             <button
                                 onClick={() => setIsReviewOpen(true)}
                                 disabled={blockchain.hasSufficientStake === false}
@@ -200,13 +203,6 @@ const Dashboard = () => {
                                 }`}
                             >
                                 <Icons.Pen /> Write New Review
-                            </button>
-                        ) : (
-                            <button
-                                onClick={connectWallet}
-                                className="px-6 py-3 bg-[#6E54FF] text-white rounded-xl font-medium shadow-lg hover:shadow-[#6E54FF]/25 hover:-translate-y-0.5 transition-all flex items-center gap-2"
-                            >
-                                <Icons.Wallet /> Connect Wallet
                             </button>
                         )}
                     </div>
@@ -232,7 +228,7 @@ const Dashboard = () => {
                                         icon={<Icons.Brain />}
                                     />
                                     <StatCard
-                                        label="Tokens Earned"
+                                        label="RVT Balance"
                                         value={`${(blockchain.balance || 0).toFixed(2)} RVT`}
                                         icon={<Icons.Wallet />}
                                     />
@@ -282,11 +278,19 @@ const Dashboard = () => {
                                                 {blockchain.hasSufficientStake === true ? (
                                                     "✅ You have sufficient stake to submit reviews."
                                                 ) : blockchain.hasSufficientStake === false ? (
-                                                    "⚠️ You need to stake more tokens to submit reviews."
+                                                    "⚠️ You need to stake at least 1 MON to submit reviews."
                                                 ) : (
                                                     "Checking stake status..."
                                                 )}
                                             </p>
+                                            {blockchain.hasSufficientStake === false && (
+                                                <button
+                                                    onClick={() => setIsStakingOpen(true)}
+                                                    className="w-full px-4 py-3 bg-[#6E54FF] text-white rounded-xl font-medium hover:bg-[#5a42de] transition-all flex items-center justify-center gap-2 mt-4"
+                                                >
+                                                    <Icons.Lock /> Stake MON Tokens
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
 
@@ -341,6 +345,56 @@ const Dashboard = () => {
                 onClose={() => setIsReviewOpen(false)}
                 onSubmit={handleReviewSubmit}
             />
+            <TransactionToast transaction={transaction} onClose={clearTransaction} />
+            
+            {/* Staking Modal */}
+            {isStakingOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-fade-in-up border border-gray-100">
+                        <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                            <h2 className="text-xl font-bold text-gray-900">Stake MON Tokens</h2>
+                            <button onClick={() => setIsStakingOpen(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
+                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        <div className="p-6">
+                            <p className="text-gray-600 mb-4 text-sm">
+                                You need to stake at least <strong>1 MON</strong> with validator ID <strong>1</strong> to submit reviews.
+                            </p>
+                            <div className="mb-4">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Amount to Stake (MON)</label>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    step="0.1"
+                                    value={stakeAmount}
+                                    onChange={(e) => setStakeAmount(e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#6E54FF] focus:border-[#6E54FF] outline-none transition-all"
+                                    placeholder="1.0"
+                                />
+                                <p className="text-xs text-gray-500 mt-1">Minimum: 1 MON</p>
+                            </div>
+                            <button
+                                onClick={async () => {
+                                    try {
+                                        await stakeTokens(stakeAmount);
+                                        setIsStakingOpen(false);
+                                    } catch (error: unknown) {
+                                        const errorMessage = error instanceof Error ? error.message : "Failed to stake tokens. Please try again.";
+                                        alert(errorMessage);
+                                    }
+                                }}
+                                disabled={isLoading || parseFloat(stakeAmount) < 1}
+                                className="w-full px-6 py-3 bg-[#6E54FF] text-white rounded-xl font-medium hover:bg-[#5a42de] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {isLoading ? "Staking..." : `Stake ${stakeAmount} MON`}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
