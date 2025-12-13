@@ -1,10 +1,20 @@
 import { useState, useEffect } from "react";
+import { MOCK_PROPERTIES, type Property } from "../data/mockProperties";
 
+export interface ReviewSubmissionData {
+    product: string;
+    productId?: string;
+    rating: number;
+    content: string;
+    qualityScore: number;
+    timestamp: number;
+    status: "Pending" | "Verified" | "Rejected";
+}
 
 interface WriteReviewModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSubmit: (review: any) => void;
+    onSubmit: (review: ReviewSubmissionData) => void;
 }
 
 interface AIAnalysis {
@@ -14,7 +24,7 @@ interface AIAnalysis {
 }
 
 const WriteReviewModal = ({ isOpen, onClose, onSubmit }: WriteReviewModalProps) => {
-    const [product, setProduct] = useState("");
+    const [selectedPropertyId, setSelectedPropertyId] = useState<string>("");
     const [rating, setRating] = useState(0);
     const [content, setContent] = useState("");
     const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -23,12 +33,16 @@ const WriteReviewModal = ({ isOpen, onClose, onSubmit }: WriteReviewModalProps) 
     useEffect(() => {
         if (isOpen) {
             // Reset state when opening
-            setProduct("");
+            setSelectedPropertyId("");
             setRating(0);
             setContent("");
             setAiResult(null);
         }
     }, [isOpen]);
+
+    const selectedProperty = selectedPropertyId 
+        ? MOCK_PROPERTIES.find(p => p.id === selectedPropertyId)
+        : null;
 
     const handleAnalyze = async () => {
         if (content.length < 20) return;
@@ -58,17 +72,24 @@ const WriteReviewModal = ({ isOpen, onClose, onSubmit }: WriteReviewModalProps) 
     };
 
     const handleSubmit = () => {
-        if (!aiResult) return;
+        if (!aiResult || !content.trim()) return;
 
+        if (!selectedProperty) {
+            alert("Please select a property to review");
+            return;
+        }
+
+        // Submit to blockchain - the onSubmit handler will handle the actual transaction
         onSubmit({
-            product,
+            product: selectedProperty.name,
+            productId: selectedProperty.id,
             rating,
             content,
             qualityScore: aiResult.score,
             timestamp: Date.now(),
-            status: "Pending" // Starts as pending until "on-chain" verification
+            status: "Pending" // Starts as pending until on-chain verification
         });
-        onClose();
+        onClose(); // Close modal - parent will handle blockchain submission
     };
 
     if (!isOpen) return null;
@@ -87,16 +108,55 @@ const WriteReviewModal = ({ isOpen, onClose, onSubmit }: WriteReviewModalProps) 
                 </div>
 
                 <div className="p-6 max-h-[80vh] overflow-y-auto">
-                    {/* Product Input */}
+                    {/* Property Selection */}
                     <div className="mb-6">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Product / Protocol</label>
-                        <input
-                            type="text"
-                            className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#6E54FF] focus:border-[#6E54FF] outline-none transition-all placeholder:text-gray-400"
-                            placeholder="e.g. Uniswap V3, Monad Wallet"
-                            value={product}
-                            onChange={(e) => setProduct(e.target.value)}
-                        />
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Select Property / Hotel / Place
+                        </label>
+                        <select
+                            value={selectedPropertyId}
+                            onChange={(e) => {
+                                setSelectedPropertyId(e.target.value);
+                                if (aiResult) setAiResult(null); // Reset analysis on change
+                            }}
+                            className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#6E54FF] focus:border-[#6E54FF] outline-none transition-all bg-white"
+                        >
+                            <option value="">-- Select a property to review --</option>
+                            <optgroup label="Hotels">
+                                {MOCK_PROPERTIES.filter(p => p.type === "hotel").map(property => (
+                                    <option key={property.id} value={property.id}>
+                                        {property.name} - {property.category}
+                                    </option>
+                                ))}
+                            </optgroup>
+                            <optgroup label="Restaurants">
+                                {MOCK_PROPERTIES.filter(p => p.type === "restaurant").map(property => (
+                                    <option key={property.id} value={property.id}>
+                                        {property.name} - {property.category}
+                                    </option>
+                                ))}
+                            </optgroup>
+                            <optgroup label="Attractions">
+                                {MOCK_PROPERTIES.filter(p => p.type === "attraction").map(property => (
+                                    <option key={property.id} value={property.id}>
+                                        {property.name} - {property.category}
+                                    </option>
+                                ))}
+                            </optgroup>
+                            <optgroup label="Protocols & Services">
+                                {MOCK_PROPERTIES.filter(p => p.type === "protocol" || p.type === "service").map(property => (
+                                    <option key={property.id} value={property.id}>
+                                        {property.name} - {property.category}
+                                    </option>
+                                ))}
+                            </optgroup>
+                        </select>
+                        {selectedProperty && (
+                            <p className="mt-2 text-sm text-gray-600">
+                                {selectedProperty.description}
+                                {selectedProperty.location && ` • ${selectedProperty.location}`}
+                            </p>
+                        )}
                     </div>
 
                     {/* Rating */}
@@ -198,8 +258,8 @@ const WriteReviewModal = ({ isOpen, onClose, onSubmit }: WriteReviewModalProps) 
                     </button>
                     <button
                         onClick={handleSubmit}
-                        disabled={!aiResult || !product || rating === 0}
-                        className={`px-6 py-2 text-white font-medium rounded-xl transition-all shadow-lg ${!aiResult || !product || rating === 0
+                        disabled={!aiResult || !selectedPropertyId || rating === 0}
+                        className={`px-6 py-2 text-white font-medium rounded-xl transition-all shadow-lg ${!aiResult || !selectedPropertyId || rating === 0
                             ? "bg-gray-300 cursor-not-allowed shadow-none"
                             : "bg-[#6E54FF] hover:bg-[#5a42de] hover:shadow-[#6E54FF]/30 hover:-translate-y-0.5"
                             }`}

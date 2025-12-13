@@ -1,37 +1,7 @@
 import { motion } from "framer-motion";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
-import { useApp } from "../context/AppContext";
-
-// ============================================
-// Types & Data
-// ============================================
-
-interface ProfileStats {
-    reputationScore: number;
-    rank: string;
-    authScore: number;
-    qualityScore: number;
-    communityScore: number;
-    badges: string[];
-    totalReviews: number;
-    helpfulVotes: number;
-    disputesWon: number;
-    tokensEarned: number;
-}
-
-const DEMO_PROFILE_STATS: ProfileStats = {
-    reputationScore: 850,
-    rank: "Expert Reviewer",
-    authScore: 98,
-    qualityScore: 94,
-    communityScore: 88,
-    badges: ["Monad Verified", "Top 1%", "Quality Expert", "Early Adopter"],
-    totalReviews: 124,
-    helpfulVotes: 890,
-    disputesWon: 3,
-    tokensEarned: 2450,
-};
+import { useApp, truncateAddress } from "../context/AppContext";
 
 // ============================================
 // Icons (Inline SVGs)
@@ -114,13 +84,44 @@ const Badge = ({ name }: { name: string }) => (
     </span>
 );
 
+// Helper function to get rank from reputation score
+function getRankFromScore(score: number): string {
+    if (score >= 800) return "Elite Reviewer";
+    if (score >= 600) return "Diamond Reviewer";
+    if (score >= 400) return "Trusted Reviewer";
+    if (score >= 200) return "Explorer";
+    return "Newcomer";
+}
+
+// Helper function to get badges from reputation
+function getBadgesFromReputation(reputation: number, totalReviews: number): string[] {
+    const badges: string[] = [];
+    if (reputation >= 800) badges.push("Elite");
+    if (reputation >= 600) badges.push("Diamond");
+    if (reputation >= 400) badges.push("Trusted");
+    if (totalReviews >= 100) badges.push("Century Club");
+    if (totalReviews >= 50) badges.push("Top Reviewer");
+    if (reputation >= 200) badges.push("Verified");
+    return badges;
+}
+
 // ============================================
 // Profile Page
 // ============================================
 
 const Profile = () => {
-    const { isDemoMode, enableDemoMode, user } = useApp();
-    const stats = isDemoMode ? DEMO_PROFILE_STATS : null;
+    const { user, blockchain, connectWallet, isLoading } = useApp();
+
+    const reputation = blockchain.reputation || 0;
+    const totalReviews = blockchain.totalReviews || 0;
+    const tokensEarned = blockchain.balance || 0;
+    const rank = getRankFromScore(reputation);
+    const badges = getBadgesFromReputation(reputation, totalReviews);
+
+    // Calculate derived scores (mock for now, could come from contract)
+    const authScore = Math.min(100, Math.max(70, reputation * 0.1));
+    const qualityScore = Math.min(100, Math.max(70, reputation * 0.12));
+    const communityScore = Math.min(100, Math.max(70, reputation * 0.11));
 
     return (
         <div className="min-h-screen bg-white">
@@ -128,7 +129,7 @@ const Profile = () => {
 
             <main className="pt-24 pb-20">
                 <div className="max-w-4xl mx-auto px-6">
-                    {!isDemoMode ? (
+                    {!user.connected || !user.address ? (
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
@@ -140,15 +141,18 @@ const Profile = () => {
                                 </svg>
                             </div>
                             <h2 className="text-2xl font-bold text-gray-900 mb-3">Your Profile</h2>
-                            <p className="text-gray-500 mb-8 max-w-sm mx-auto">Connect your wallet to view your on-chain reputation or explore with demo data.</p>
+                            <p className="text-gray-500 mb-8 max-w-sm mx-auto">
+                                Connect your MetaMask wallet to view your on-chain reputation, reviews, and earnings.
+                            </p>
                             <button
-                                onClick={enableDemoMode}
-                                className="px-6 py-3 bg-[#6E54FF] text-white rounded-xl font-medium hover:bg-[#5a42de] transition-all"
+                                onClick={connectWallet}
+                                disabled={isLoading}
+                                className="px-6 py-3 bg-[#6E54FF] text-white rounded-xl font-medium hover:bg-[#5a42de] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                View Demo Profile
+                                {isLoading ? "Connecting..." : "Connect MetaMask"}
                             </button>
                         </motion.div>
-                    ) : stats && (
+                    ) : (
                         <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
@@ -164,7 +168,7 @@ const Profile = () => {
                                 {/* Avatar */}
                                 <div className="relative">
                                     <div className="w-24 h-24 bg-gradient-to-br from-[#6E54FF] to-[#9F88FF] rounded-2xl flex items-center justify-center text-4xl text-white font-bold shadow-lg shadow-[#6E54FF]/20">
-                                        {user.name.charAt(0)}
+                                        {user.address.slice(2, 4).toUpperCase()}
                                     </div>
                                     <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-4 border-white"></div>
                                 </div>
@@ -172,21 +176,29 @@ const Profile = () => {
                                 {/* Info */}
                                 <div className="flex-1 text-center md:text-left">
                                     <div className="flex items-center justify-center md:justify-start gap-2 mb-1">
-                                        <h1 className="text-2xl font-bold text-gray-900">{user.name}</h1>
-                                        <div className="text-[#6E54FF]">
-                                            <Icons.Verified />
-                                        </div>
+                                        <h1 className="text-2xl font-bold text-gray-900">
+                                            {truncateAddress(user.address)}
+                                        </h1>
+                                        {reputation >= 200 && (
+                                            <div className="text-[#6E54FF]">
+                                                <Icons.Verified />
+                                            </div>
+                                        )}
                                     </div>
-                                    <p className="text-[#6E54FF] font-medium mb-3">{stats.rank}</p>
+                                    <p className="text-[#6E54FF] font-medium mb-3">{rank}</p>
                                     <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
-                                        {stats.badges.map(b => <Badge key={b} name={b} />)}
+                                        {badges.length > 0 ? (
+                                            badges.map(badge => <Badge key={badge} name={badge} />)
+                                        ) : (
+                                            <span className="text-sm text-gray-500">No badges yet</span>
+                                        )}
                                     </div>
                                 </div>
 
                                 {/* Reputation Score */}
                                 <div className="text-center md:text-right">
                                     <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Reputation</p>
-                                    <p className="text-5xl font-bold text-gray-900">{stats.reputationScore}</p>
+                                    <p className="text-5xl font-bold text-gray-900">{reputation}</p>
                                     <p className="text-sm text-gray-400">out of 1000</p>
                                 </div>
                             </motion.div>
@@ -200,9 +212,9 @@ const Profile = () => {
                             >
                                 <h3 className="text-lg font-bold text-gray-900 mb-6">Score Breakdown</h3>
                                 <div className="grid md:grid-cols-3 gap-6">
-                                    <ScoreBar score={stats.authScore} label="Authenticity" color="#10b981" />
-                                    <ScoreBar score={stats.qualityScore} label="Review Quality" color="#6E54FF" />
-                                    <ScoreBar score={stats.communityScore} label="Community" color="#f43f5e" />
+                                    <ScoreBar score={Math.round(authScore)} label="Authenticity" color="#10b981" />
+                                    <ScoreBar score={Math.round(qualityScore)} label="Review Quality" color="#6E54FF" />
+                                    <ScoreBar score={Math.round(communityScore)} label="Community" color="#f43f5e" />
                                 </div>
                             </motion.div>
 
@@ -213,10 +225,10 @@ const Profile = () => {
                                 transition={{ delay: 0.3 }}
                                 className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12"
                             >
-                                <StatCard icon={Icons.FileText} label="Reviews" value={stats.totalReviews} />
-                                <StatCard icon={Icons.ThumbsUp} label="Helpful Votes" value={stats.helpfulVotes} />
-                                <StatCard icon={Icons.Trophy} label="Disputes Won" value={stats.disputesWon} />
-                                <StatCard icon={Icons.Coins} label="MR Earned" value={`${stats.tokensEarned}`} />
+                                <StatCard icon={Icons.FileText} label="Reviews" value={totalReviews} />
+                                <StatCard icon={Icons.Coins} label="RVT Earned" value={tokensEarned.toFixed(2)} />
+                                <StatCard icon={Icons.Trophy} label="Reputation" value={reputation} />
+                                <StatCard icon={Icons.ThumbsUp} label="Staked" value={`${blockchain.stakedAmount?.toFixed(2) || "0.00"} MON`} />
                             </motion.div>
 
                             {/* Recent Activity */}
@@ -226,46 +238,61 @@ const Profile = () => {
                                 transition={{ delay: 0.4 }}
                             >
                                 <div className="flex items-center justify-between mb-6">
-                                    <h3 className="text-lg font-bold text-gray-900">Recent Activity</h3>
-                                    <button className="text-sm text-[#6E54FF] font-medium hover:underline flex items-center gap-1">
-                                        View All <Icons.ChevronRight />
-                                    </button>
+                                    <h3 className="text-lg font-bold text-gray-900">Recent Reviews</h3>
+                                    {blockchain.reviews && blockchain.reviews.length > 0 && (
+                                        <button className="text-sm text-[#6E54FF] font-medium hover:underline flex items-center gap-1">
+                                            View All <Icons.ChevronRight />
+                                        </button>
+                                    )}
                                 </div>
 
                                 <div className="space-y-3">
-                                    {[
-                                        { product: "Uniswap V4", score: 92, reward: 45, time: "2 hours ago" },
-                                        { product: "Monad Bridge", score: 88, reward: 38, time: "1 day ago" },
-                                        { product: "DeFi Protocol X", score: 95, reward: 52, time: "3 days ago" },
-                                    ].map((item, i) => (
-                                        <motion.div
-                                            key={item.product}
-                                            initial={{ opacity: 0, x: -20 }}
-                                            animate={{ opacity: 1, x: 0 }}
-                                            transition={{ delay: 0.5 + i * 0.1 }}
-                                            className="flex items-center justify-between p-4 bg-white border border-gray-100 rounded-xl hover:border-[#6E54FF]/30 hover:shadow-sm transition-all group"
-                                        >
-                                            <div className="flex items-center gap-4">
-                                                <div className="w-10 h-10 bg-[#6E54FF]/5 rounded-lg flex items-center justify-center text-[#6E54FF]">
-                                                    <Icons.FileText />
-                                                </div>
-                                                <div>
-                                                    <p className="font-medium text-gray-900 group-hover:text-[#6E54FF] transition-colors">{item.product}</p>
-                                                    <p className="text-sm text-gray-500">{item.time}</p>
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center gap-6">
-                                                <div className="text-right">
-                                                    <p className="text-xs text-gray-500">Quality</p>
-                                                    <p className="font-bold text-gray-900">{item.score}/100</p>
-                                                </div>
-                                                <div className="text-right">
-                                                    <p className="text-xs text-gray-500">Reward</p>
-                                                    <p className="font-bold text-[#6E54FF]">+{item.reward} MR</p>
-                                                </div>
-                                            </div>
-                                        </motion.div>
-                                    ))}
+                                    {blockchain.reviews && blockchain.reviews.length > 0 ? (
+                                        blockchain.reviews.slice(0, 5).map((review, i) => {
+                                            const date = new Date(Number(review.timestamp) * 1000);
+                                            const timeAgo = date.toLocaleDateString();
+                                            const qualityScore = Number(review.qualityScore);
+                                            const reward = parseFloat((review.rewardAmount / BigInt(10 ** 18)).toString());
+
+                                            return (
+                                                <motion.div
+                                                    key={i}
+                                                    initial={{ opacity: 0, x: -20 }}
+                                                    animate={{ opacity: 1, x: 0 }}
+                                                    transition={{ delay: 0.5 + i * 0.1 }}
+                                                    className="flex items-center justify-between p-4 bg-white border border-gray-100 rounded-xl hover:border-[#6E54FF]/30 hover:shadow-sm transition-all group"
+                                                >
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="w-10 h-10 bg-[#6E54FF]/5 rounded-lg flex items-center justify-center text-[#6E54FF]">
+                                                            <Icons.FileText />
+                                                        </div>
+                                                        <div>
+                                                            <p className="font-medium text-gray-900 group-hover:text-[#6E54FF] transition-colors">
+                                                                Review #{i + 1}
+                                                            </p>
+                                                            <p className="text-sm text-gray-500">{timeAgo}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-6">
+                                                        <div className="text-right">
+                                                            <p className="text-xs text-gray-500">Quality</p>
+                                                            <p className="font-bold text-gray-900">{qualityScore}/100</p>
+                                                        </div>
+                                                        {reward > 0 && (
+                                                            <div className="text-right">
+                                                                <p className="text-xs text-gray-500">Reward</p>
+                                                                <p className="font-bold text-[#6E54FF]">+{reward.toFixed(2)} RVT</p>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </motion.div>
+                                            );
+                                        })
+                                    ) : (
+                                        <div className="text-center py-12 bg-gray-50 rounded-xl">
+                                            <p className="text-gray-500">No reviews yet. Start reviewing to build your reputation!</p>
+                                        </div>
+                                    )}
                                 </div>
                             </motion.div>
                         </motion.div>

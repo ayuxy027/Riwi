@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { useApp } from "../context/AppContext";
+import { useApp, truncateAddress } from "../context/AppContext";
 
 // ============================================
 // Navbar Component (Monad Theme)
 // ============================================
 
 const Navbar = () => {
-  const { isDemoMode, enableDemoMode, disableDemoMode, user } = useApp();
+  const { user, connectWallet, disconnectWallet, blockchain } = useApp();
   const [showMenu, setShowMenu] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
@@ -51,7 +51,7 @@ const Navbar = () => {
             ))}
           </div>
 
-          {/* Right Side - Demo/User Status */}
+          {/* Right Side - Wallet Connection */}
           <div className="flex items-center gap-2">
             {/* Mobile Menu Button */}
             <button
@@ -67,71 +67,69 @@ const Navbar = () => {
               </svg>
             </button>
 
-            {/* Demo Status Badge */}
+            {/* Wallet Status Badge */}
             <div className="relative">
-              <button
-                onClick={() => setShowMenu(!showMenu)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-full hover:shadow-md transition-all ${isDemoMode
-                  ? "bg-amber-50 border border-amber-200"
-                  : "bg-monad-50 border border-monad-200"
-                  }`}
-              >
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center ${isDemoMode ? "bg-amber-500" : "bg-monad-600"}`}>
-                  <span className="text-white text-xs font-bold">
-                    {user.name.charAt(0) || "G"}
+              {user.connected && user.address ? (
+                <button
+                  onClick={() => setShowMenu(!showMenu)}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-full hover:shadow-md transition-all bg-monad-50 border border-monad-200"
+                >
+                  <div className="w-6 h-6 rounded-full flex items-center justify-center bg-monad-600">
+                    <span className="text-white text-xs font-bold">
+                      {user.address.slice(2, 4).toUpperCase()}
+                    </span>
+                  </div>
+                  <span className="text-xs font-medium hidden sm:block text-monad-700">
+                    {truncateAddress(user.address)}
                   </span>
-                </div>
-                <span className={`text-xs font-medium hidden sm:block ${isDemoMode ? "text-amber-700" : "text-monad-700"}`}>
-                  {isDemoMode ? "Demo Mode" : user.name || "Guest"}
-                </span>
-                <svg className={`w-3 h-3 ${isDemoMode ? "text-amber-600" : "text-monad-600"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
+                  <svg className="w-3 h-3 text-monad-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+              ) : (
+                <button
+                  onClick={connectWallet}
+                  className="px-4 py-1.5 bg-[#6E54FF] text-white rounded-full text-sm font-medium hover:bg-[#5a42de] transition-all flex items-center gap-2"
+                  title="Connect MetaMask Wallet"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                  <span className="hidden sm:inline">Connect MetaMask</span>
+                  <span className="sm:hidden">Connect</span>
+                </button>
+              )}
 
               {/* Dropdown Menu */}
-              {showMenu && (
+              {showMenu && user.connected && (
                 <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50">
                   <div className="p-4 bg-gray-50 border-b border-gray-100">
                     <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isDemoMode ? "bg-amber-500" : "bg-monad-600"}`}>
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center bg-monad-600">
                         <span className="text-white font-bold">
-                          {user.name.charAt(0) || "G"}
+                          {user.address?.slice(2, 4).toUpperCase()}
                         </span>
                       </div>
-                      <div>
-                        <p className="font-semibold text-gray-900">{user.name || "Guest User"}</p>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-gray-900 truncate">{truncateAddress(user.address || "")}</p>
                         <p className="text-xs text-gray-500">
-                          {isDemoMode ? "🧪 Demo Mode Active" : "Viewing as guest"}
+                          {blockchain.balance !== null ? `${blockchain.balance.toFixed(2)} RVT` : "Loading..."}
                         </p>
                       </div>
                     </div>
                   </div>
 
                   <div className="p-3 space-y-2">
-                    {isDemoMode ? (
-                      <button
-                        onClick={() => {
-                          disableDemoMode();
-                          setShowMenu(false);
-                        }}
-                        className="w-full py-2.5 text-sm bg-amber-100 text-amber-800 rounded-xl hover:bg-amber-200 transition-colors flex items-center justify-center gap-2"
-                      >
-                        <span>🚪</span>
-                        Exit Demo Mode
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => {
-                          enableDemoMode();
-                          setShowMenu(false);
-                        }}
-                        className="w-full py-2.5 text-sm bg-monad-600 text-white rounded-xl hover:bg-monad-700 transition-colors flex items-center justify-center gap-2"
-                      >
-                        <span>🧪</span>
-                        Enter Demo Mode
-                      </button>
-                    )}
+                    <button
+                      onClick={() => {
+                        disconnectWallet();
+                        setShowMenu(false);
+                      }}
+                      className="w-full py-2.5 text-sm bg-red-100 text-red-800 rounded-xl hover:bg-red-200 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <span>🚪</span>
+                      Disconnect Wallet
+                    </button>
 
                     <Link
                       to="/profile"

@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
-import { useApp } from "../context/AppContext";
-import WriteReviewModal from "../components/WriteReviewModal";
+import { useApp, truncateAddress } from "../context/AppContext";
+import WriteReviewModal, { type ReviewSubmissionData } from "../components/WriteReviewModal";
+import { formatEther } from "viem";
+import type { Review } from "../services/blockchainService";
 
 // ============================================
 // Icons (Professional SVGs)
@@ -79,45 +81,6 @@ const Icons = {
 };
 
 // ============================================
-// Types
-// ============================================
-
-interface ReviewActivity {
-    id: string;
-    product: string;
-    date: string;
-    qualityScore: number;
-    reward: number;
-    status: "Verified" | "Pending" | "Rejected";
-}
-
-interface UserStats {
-    totalReviews: number;
-    avgQualityScore: number;
-    tokensEarned: number;
-    stakedAmount: number;
-}
-
-// ============================================
-// Demo Data
-// ============================================
-
-const DEMO_STATS: UserStats = {
-    totalReviews: 47,
-    avgQualityScore: 8.7,
-    tokensEarned: 2450,
-    stakedAmount: 500,
-};
-
-const INITIAL_HISTORY: ReviewActivity[] = [
-    { id: "1", product: "DeFi Exchange Pro", date: "2 hrs ago", qualityScore: 9.2, reward: 50, status: "Verified" },
-    { id: "2", product: "Monad Wallet", date: "1 day ago", qualityScore: 8.5, reward: 35, status: "Verified" },
-    { id: "3", product: "NFT Marketplace", date: "2 days ago", qualityScore: 7.8, reward: 20, status: "Verified" },
-    { id: "4", product: "Crypto Game X", date: "3 days ago", qualityScore: 0, reward: 0, status: "Pending" },
-    { id: "5", product: "Yield Farm Alpha", date: "1 week ago", qualityScore: 4.2, reward: 0, status: "Rejected" },
-];
-
-// ============================================
 // Components
 // ============================================
 
@@ -138,68 +101,78 @@ const StatCard = ({ label, value, icon, trend }: { label: string; value: string;
     </div>
 );
 
-const ReviewHistoryItem = ({ review }: { review: ReviewActivity }) => (
-    <div className="flex items-center justify-between p-4 bg-white border border-gray-100 rounded-xl hover:bg-gray-50/80 hover:border-[#6E54FF]/20 transition-all duration-200 group cursor-pointer">
-        <div className="flex items-center gap-4">
-            <div className={`w-1.5 h-12 rounded-full transition-all ${review.status === "Verified" ? "bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.4)]" :
-                review.status === "Pending" ? "bg-yellow-500" : "bg-red-500"
-                }`} />
-            <div>
-                <h4 className="font-semibold text-gray-900 group-hover:text-[#6E54FF] transition-colors flex items-center gap-2">
-                    {review.product}
-                </h4>
-                <p className="text-xs text-gray-500 flex items-center gap-1">
-                    <Icons.Layers /> {review.date}
+const ReviewHistoryItem = ({ review }: { review: Review }) => {
+    const status = review.validated ? "Verified" : "Pending";
+    const qualityScore = Number(review.qualityScore);
+    const reward = parseFloat(formatEther(review.rewardAmount));
+    const date = new Date(Number(review.timestamp) * 1000).toLocaleDateString();
+
+    return (
+        <div className="flex items-center justify-between p-4 bg-white border border-gray-100 rounded-xl hover:bg-gray-50/80 hover:border-[#6E54FF]/20 transition-all duration-200 group cursor-pointer">
+            <div className="flex items-center gap-4">
+                <div className={`w-1.5 h-12 rounded-full transition-all ${status === "Verified" ? "bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.4)]" : "bg-yellow-500"
+                    }`} />
+                <div>
+                    <h4 className="font-semibold text-gray-900 group-hover:text-[#6E54FF] transition-colors flex items-center gap-2">
+                        Review by {truncateAddress(review.reviewer)}
+                    </h4>
+                    <p className="text-xs text-gray-500 flex items-center gap-1">
+                        <Icons.Layers /> {date}
+                    </p>
+                </div>
+            </div>
+            <div className="text-right">
+                <div className="flex items-center gap-2 justify-end mb-1">
+                    <span className={`px-2 py-0.5 rounded text-xs font-bold flex items-center gap-1 ${status === "Verified" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"
+                        }`}>
+                        {status === "Verified" && <Icons.ShieldCheck />}
+                        {status}
+                    </span>
+                </div>
+                <p className="text-sm font-medium text-gray-700">
+                    AI Score: <span className="font-bold text-gray-900">{qualityScore > 0 ? qualityScore : "-"}</span>
                 </p>
+                {reward > 0 && (
+                    <p className="text-xs text-[#6E54FF] font-bold flex items-center justify-end gap-1 mt-1">
+                        +{reward.toFixed(2)} RVT
+                    </p>
+                )}
             </div>
         </div>
-        <div className="text-right">
-            <div className="flex items-center gap-2 justify-end mb-1">
-                <span className={`px-2 py-0.5 rounded text-xs font-bold flex items-center gap-1 ${review.status === "Verified" ? "bg-green-100 text-green-700" :
-                    review.status === "Pending" ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"
-                    }`}>
-                    {review.status === "Verified" && <Icons.ShieldCheck />}
-                    {review.status}
-                </span>
-            </div>
-            <p className="text-sm font-medium text-gray-700">
-                AI Score: <span className="font-bold text-gray-900">{review.qualityScore > 0 ? review.qualityScore : "-"}</span>
-            </p>
-            {review.reward > 0 && (
-                <p className="text-xs text-[#6E54FF] font-bold flex items-center justify-end gap-1 mt-1">
-                    +{review.reward} MR
-                </p>
-            )}
-        </div>
-    </div>
-);
+    );
+};
 
 // ============================================
 // Dashboard Page
 // ============================================
 
 const Dashboard = () => {
-    const { isDemoMode, enableDemoMode, user } = useApp();
-    const [history, setHistory] = useState<ReviewActivity[]>(INITIAL_HISTORY);
+    const { user, blockchain, connectWallet, submitReview, refreshUserData, isLoading } = useApp();
     const [isReviewOpen, setIsReviewOpen] = useState(false);
 
-    // In a real app, these would come from an API/Contract
-    const stats = isDemoMode ? DEMO_STATS : null;
+    useEffect(() => {
+        if (user.connected && user.address) {
+            refreshUserData();
+        }
+    }, [user.connected, user.address, refreshUserData]);
 
-    const handleReviewSubmit = (reviewData: any) => {
-        const newReview: ReviewActivity = {
-            id: Date.now().toString(),
-            product: reviewData.product,
-            date: "Just now",
-            qualityScore: reviewData.qualityScore,
-            reward: 0, // Pending
-            status: "Pending"
-        };
-        setHistory([newReview, ...history]);
+    const handleReviewSubmit = async (reviewData: ReviewSubmissionData) => {
+        try {
+            await submitReview(reviewData.content);
+            setIsReviewOpen(false);
+            // Data will refresh automatically via context
+        } catch (error: unknown) {
+            console.error("Failed to submit review:", error);
+            const errorMessage = error instanceof Error ? error.message : "Failed to submit review. Please try again.";
+            alert(errorMessage);
+        }
     };
 
+    // Show loading state while data is being fetched
+    const isLoadingData = blockchain.isLoading;
+
     return (
-        <div className="min-h-screen bg-[#F9FAFB]"> {/* Cleaner light grey background */}
+        <div className="min-h-screen bg-[#F9FAFB]">
             <Navbar />
 
             <main className="pt-24 pb-16 px-6">
@@ -209,53 +182,66 @@ const Dashboard = () => {
                         <div>
                             <h1 className="text-3xl font-bold text-gray-900 mb-2 tracking-tight">Reviewer Dashboard</h1>
                             <p className="text-gray-500 text-lg">
-                                Welcome back, <span className="text-[#6E54FF] font-semibold">{user.name || "Guest"}</span>.
+                                {user.connected && user.address ? (
+                                    <>Welcome back, <span className="text-[#6E54FF] font-semibold">{truncateAddress(user.address)}</span>.</>
+                                ) : (
+                                    "Connect your wallet to get started"
+                                )}
                             </p>
                         </div>
-                        {!isDemoMode ? (
+                        {user.connected ? (
                             <button
-                                onClick={enableDemoMode}
-                                className="px-6 py-3 bg-[#6E54FF] text-white rounded-xl font-medium shadow-lg hover:shadow-[#6E54FF]/25 hover:-translate-y-0.5 transition-all flex items-center gap-2"
+                                onClick={() => setIsReviewOpen(true)}
+                                disabled={blockchain.hasSufficientStake === false}
+                                className={`px-6 py-3 rounded-xl font-medium shadow-lg transition-all flex items-center gap-2 ${
+                                    blockchain.hasSufficientStake !== false
+                                        ? "bg-[#6E54FF] text-white hover:shadow-[#6E54FF]/25 hover:-translate-y-0.5"
+                                        : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                                }`}
                             >
-                                <Icons.Lock /> Enable Demo Mode
+                                <Icons.Pen /> Write New Review
                             </button>
                         ) : (
                             <button
-                                onClick={() => setIsReviewOpen(true)}
+                                onClick={connectWallet}
                                 className="px-6 py-3 bg-[#6E54FF] text-white rounded-xl font-medium shadow-lg hover:shadow-[#6E54FF]/25 hover:-translate-y-0.5 transition-all flex items-center gap-2"
                             >
-                                <Icons.Pen /> Write New Review
+                                <Icons.Wallet /> Connect Wallet
                             </button>
                         )}
                     </div>
 
-                    {isDemoMode && stats ? (
-                        <div className="space-y-8 animate-fade-in-up">
-                            {/* Stats Grid */}
-                            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-                                <StatCard
-                                    label="Total Reviews"
-                                    value={(stats.totalReviews + (history.length - INITIAL_HISTORY.length)).toString()}
-                                    icon={<Icons.Review />}
-                                    trend="+4 this week"
-                                />
-                                <StatCard
-                                    label="AI Quality Score"
-                                    value={stats.avgQualityScore.toString()}
-                                    icon={<Icons.Brain />}
-                                    trend="Top 10%"
-                                />
-                                <StatCard
-                                    label="Tokens Earned"
-                                    value={`${stats.tokensEarned} MR`}
-                                    icon={<Icons.Wallet />}
-                                />
-                                <StatCard
-                                    label="Amount Staked"
-                                    value={`${stats.stakedAmount} MR`}
-                                    icon={<Icons.Lock />}
-                                />
+                    {user.connected ? (
+                        isLoadingData ? (
+                            <div className="text-center py-24">
+                                <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-[#6E54FF] border-t-transparent mb-4"></div>
+                                <p className="text-gray-500">Loading your data...</p>
                             </div>
+                        ) : (
+                            <div className="space-y-8 animate-fade-in-up">
+                                {/* Stats Grid */}
+                                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                    <StatCard
+                                        label="Total Reviews"
+                                        value={(blockchain.totalReviews || 0).toString()}
+                                        icon={<Icons.Review />}
+                                    />
+                                    <StatCard
+                                        label="Reputation Score"
+                                        value={(blockchain.reputation || 0).toString()}
+                                        icon={<Icons.Brain />}
+                                    />
+                                    <StatCard
+                                        label="Tokens Earned"
+                                        value={`${(blockchain.balance || 0).toFixed(2)} RVT`}
+                                        icon={<Icons.Wallet />}
+                                    />
+                                    <StatCard
+                                        label="Amount Staked"
+                                        value={`${(blockchain.stakedAmount || 0).toFixed(2)} MON`}
+                                        icon={<Icons.Lock />}
+                                    />
+                                </div>
 
                             <div className="grid lg:grid-cols-3 gap-8">
                                 {/* Recent Activity */}
@@ -263,23 +249,23 @@ const Dashboard = () => {
                                     <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
                                         <div className="flex items-center justify-between mb-6">
                                             <h2 className="text-xl font-bold text-gray-900">Recent Reviews</h2>
-                                            <button className="text-sm font-medium text-[#6E54FF] hover:bg-[#6E54FF]/10 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1">
-                                                View All <Icons.ChevronRight />
-                                            </button>
                                         </div>
                                         <div className="space-y-4">
-                                            {history.map((review) => (
-                                                <ReviewHistoryItem key={review.id} review={review} />
-                                            ))}
+                                            {blockchain.reviews && blockchain.reviews.length > 0 ? (
+                                                blockchain.reviews.slice(0, 5).map((review, idx) => (
+                                                    <ReviewHistoryItem key={idx} review={review} />
+                                                ))
+                                            ) : (
+                                                <p className="text-gray-500 text-center py-8">No reviews yet. Submit your first review!</p>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
 
                                 {/* Quick Actions & Staking Info */}
                                 <div className="space-y-6">
-                                    {/* Staking Card - Premium Dark Design */}
+                                    {/* Staking Card */}
                                     <div className="bg-gradient-to-br from-[#0E091C] to-[#1A1429] rounded-2xl p-8 text-white shadow-xl relative overflow-hidden group border border-gray-800">
-                                        {/* Abstract Decoration */}
                                         <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity duration-500 scale-150">
                                             <Icons.Lock />
                                         </div>
@@ -289,13 +275,18 @@ const Dashboard = () => {
                                             <h3 className="text-lg font-bold mb-2 text-gray-200 flex items-center gap-2">
                                                 <Icons.ShieldCheck /> Staking Status
                                             </h3>
-                                            <div className="text-4xl font-bold mb-4 tracking-tight">{stats.stakedAmount} <span className="text-lg text-[#6E54FF] font-medium">MR</span></div>
-                                            <p className="text-gray-400 text-sm mb-8 leading-relaxed">
-                                                Your stake ensures verify authenticity. Maintain quality to avoid slashing.
+                                            <div className="text-4xl font-bold mb-4 tracking-tight">
+                                                {(blockchain.stakedAmount || 0).toFixed(2)} <span className="text-lg text-[#6E54FF] font-medium">MON</span>
+                                            </div>
+                                            <p className="text-gray-400 text-sm mb-4 leading-relaxed">
+                                                {blockchain.hasSufficientStake === true ? (
+                                                    "✅ You have sufficient stake to submit reviews."
+                                                ) : blockchain.hasSufficientStake === false ? (
+                                                    "⚠️ You need to stake more tokens to submit reviews."
+                                                ) : (
+                                                    "Checking stake status..."
+                                                )}
                                             </p>
-                                            <button className="w-full py-3 bg-[#6E54FF] hover:bg-[#5a42de] text-white rounded-xl font-medium transition-all shadow-lg hover:shadow-[#6E54FF]/30 border border-transparent">
-                                                Manage Stake
-                                            </button>
                                         </div>
                                     </div>
 
@@ -312,20 +303,32 @@ const Dashboard = () => {
                                 </div>
                             </div>
                         </div>
+                        )
                     ) : (
                         <div className="text-center py-24 bg-white rounded-3xl border border-gray-100 shadow-sm max-w-3xl mx-auto">
                             <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6 text-gray-400">
-                                <Icons.Lock />
+                                <Icons.Wallet />
                             </div>
-                            <h2 className="text-2xl font-bold text-gray-900 mb-4">Dashboard Locked</h2>
-                            <p className="text-gray-500 mb-10 max-w-md mx-auto leading-relaxed">
-                                Connect your wallet or enable demo mode to view your reputation stats, earnings, and review history.
+                            <h2 className="text-2xl font-bold text-gray-900 mb-4">Connect MetaMask Wallet</h2>
+                            <p className="text-gray-500 mb-6 max-w-md mx-auto leading-relaxed">
+                                Connect your MetaMask wallet to view your reputation stats, earnings, and review history on Monad testnet.
                             </p>
+                            <div className="mb-10">
+                                <a
+                                    href="https://metamask.io/download/"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-sm text-[#6E54FF] hover:underline mb-4 inline-block"
+                                >
+                                    Don't have MetaMask? Install it here →
+                                </a>
+                            </div>
                             <button
-                                onClick={enableDemoMode}
-                                className="px-8 py-4 bg-[#6E54FF] text-white rounded-xl font-medium shadow-lg hover:shadow-[#6E54FF]/25 hover:-translate-y-1 transition-all flex items-center gap-2 mx-auto"
+                                onClick={connectWallet}
+                                disabled={isLoading}
+                                className="px-8 py-4 bg-[#6E54FF] text-white rounded-xl font-medium shadow-lg hover:shadow-[#6E54FF]/25 hover:-translate-y-1 transition-all flex items-center gap-2 mx-auto disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                <Icons.Lock /> Enable Demo Mode
+                                <Icons.Wallet /> {isLoading ? "Connecting..." : "Connect MetaMask"}
                             </button>
                         </div>
                     )}
