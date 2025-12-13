@@ -5,7 +5,6 @@ const Footer = () => {
     Platform: ["How it Works", "Tokenomics", "Staking", "Governance"],
     Community: ["Discord", "Twitter", "Telegram", "Blog"],
     Legal: ["Privacy Policy", "Terms of Service", "Content Guidelines"],
-    Support: ["Help Center", "Report Issue", "Contact Us"],
   };
 
   return (
