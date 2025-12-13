@@ -1,21 +1,23 @@
+import { motion } from "framer-motion";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { useApp } from "../context/AppContext";
 
 // ============================================
-// Types
+// Types & Data
 // ============================================
 
 interface ProfileStats {
     reputationScore: number;
     rank: string;
-    authScore: number; // 0-100
-    qualityScore: number; // 0-100
-    communityScore: number; // 0-100
+    authScore: number;
+    qualityScore: number;
+    communityScore: number;
     badges: string[];
     totalReviews: number;
     helpfulVotes: number;
     disputesWon: number;
+    tokensEarned: number;
 }
 
 const DEMO_PROFILE_STATS: ProfileStats = {
@@ -28,47 +30,87 @@ const DEMO_PROFILE_STATS: ProfileStats = {
     totalReviews: 124,
     helpfulVotes: 890,
     disputesWon: 3,
+    tokensEarned: 2450,
+};
+
+// ============================================
+// Icons (Inline SVGs)
+// ============================================
+
+const Icons = {
+    Verified: () => (
+        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none">
+            <path d="M9 12l2 2 4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" stroke="currentColor" strokeWidth="2" />
+        </svg>
+    ),
+    FileText: () => (
+        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+    ),
+    ThumbsUp: () => (
+        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none">
+            <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+    ),
+    Trophy: () => (
+        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none">
+            <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18M4 22h16M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22M18 2H6v7a6 6 0 0 0 12 0V2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+    ),
+    Coins: () => (
+        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none">
+            <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="2" />
+            <path d="M18.09 10.37A6 6 0 1 1 10.34 18" stroke="currentColor" strokeWidth="2" />
+            <path d="M7 6h4M8 8V4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        </svg>
+    ),
+    ChevronRight: () => (
+        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none">
+            <path d="M9 18l6-6-6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+    ),
 };
 
 // ============================================
 // Components
 // ============================================
 
-const ScoreRing = ({ score, label, color }: { score: number; label: string; color: string }) => {
-    const radius = 30;
-    const circumference = 2 * Math.PI * radius;
-    const offset = circumference - (score / 100) * circumference;
-
-    return (
-        <div className="flex flex-col items-center group">
-            <div className="relative w-24 h-24 mb-2">
-                <svg className="w-full h-full transform -rotate-90">
-                    <circle cx="50%" cy="50%" r={radius} stroke="#f3f4f6" strokeWidth="8" fill="none" />
-                    <circle
-                        cx="50%"
-                        cy="50%"
-                        r={radius}
-                        stroke={color}
-                        strokeWidth="8"
-                        fill="none"
-                        strokeLinecap="round"
-                        strokeDasharray={circumference}
-                        strokeDashoffset={offset}
-                        className="transition-all duration-1000 ease-out group-hover:scale-110 origin-center"
-                    />
-                </svg>
-                <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-xl font-bold text-gray-800">{score}</span>
-                </div>
-            </div>
-            <p className="text-sm font-medium text-gray-500 group-hover:text-gray-900 transition-colors">{label}</p>
+const ScoreBar = ({ score, label, color }: { score: number; label: string; color: string }) => (
+    <div className="space-y-2">
+        <div className="flex justify-between items-center">
+            <span className="text-sm text-gray-600 font-medium">{label}</span>
+            <span className="text-sm font-bold text-gray-900">{score}/100</span>
         </div>
-    );
-};
+        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+            <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${score}%` }}
+                transition={{ duration: 1, ease: "easeOut", delay: 0.3 }}
+                className="h-full rounded-full"
+                style={{ backgroundColor: color }}
+            />
+        </div>
+    </div>
+);
+
+const StatCard = ({ icon: Icon, label, value }: { icon: React.FC; label: string; value: string | number }) => (
+    <div className="flex items-center gap-4 p-4 bg-gray-50/80 rounded-xl hover:bg-gray-100/80 transition-colors">
+        <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center text-[#6E54FF] shadow-sm">
+            <Icon />
+        </div>
+        <div>
+            <p className="text-xs text-gray-500 uppercase tracking-wide">{label}</p>
+            <p className="text-lg font-bold text-gray-900">{value}</p>
+        </div>
+    </div>
+);
 
 const Badge = ({ name }: { name: string }) => (
-    <span className="px-3 py-1.5 bg-[#6E54FF]/5 text-[#6E54FF] rounded-lg text-sm font-medium border border-[#6E54FF]/20 hover:bg-[#6E54FF]/10 transition-colors">
-        🏆 {name}
+    <span className="px-3 py-1.5 bg-white text-gray-700 rounded-full text-xs font-medium border border-gray-200 shadow-sm">
+        {name}
     </span>
 );
 
@@ -81,100 +123,152 @@ const Profile = () => {
     const stats = isDemoMode ? DEMO_PROFILE_STATS : null;
 
     return (
-        <div className="min-h-screen bg-gray-50/50">
+        <div className="min-h-screen bg-white">
             <Navbar />
 
-            <main className="pt-24 pb-16 px-6">
-                <div className="max-w-5xl mx-auto">
+            <main className="pt-24 pb-20">
+                <div className="max-w-4xl mx-auto px-6">
                     {!isDemoMode ? (
-                        <div className="text-center py-20 bg-white rounded-3xl border border-gray-100 shadow-sm max-w-2xl mx-auto mt-10">
-                            <h2 className="text-xl font-bold text-gray-900 mb-4">View Public Profile</h2>
-                            <button onClick={enableDemoMode} className="px-8 py-3 bg-[#6E54FF] text-white rounded-xl font-medium hover:bg-[#5a42de] transition-all">
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="text-center py-24"
+                        >
+                            <div className="w-20 h-20 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-6 text-gray-400">
+                                <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" />
+                                </svg>
+                            </div>
+                            <h2 className="text-2xl font-bold text-gray-900 mb-3">Your Profile</h2>
+                            <p className="text-gray-500 mb-8 max-w-sm mx-auto">Connect your wallet to view your on-chain reputation or explore with demo data.</p>
+                            <button
+                                onClick={enableDemoMode}
+                                className="px-6 py-3 bg-[#6E54FF] text-white rounded-xl font-medium hover:bg-[#5a42de] transition-all"
+                            >
                                 View Demo Profile
                             </button>
-                        </div>
+                        </motion.div>
                     ) : stats && (
-                        <div className="space-y-8 animate-fade-in-up">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ duration: 0.4 }}
+                        >
                             {/* Profile Header */}
-                            <div className="bg-white rounded-3xl shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden">
-                                <div className="h-32 bg-gradient-to-r from-[#6E54FF] to-purple-600"></div>
-                                <div className="px-8 pb-8 relative">
-                                    <div className="flex flex-col md:flex-row items-end md:items-center -mt-12 mb-6 gap-6">
-                                        <div className="w-24 h-24 bg-[#0E091C] rounded-2xl border-4 border-white shadow-lg flex items-center justify-center text-4xl text-white font-bold">
-                                            {user.name.charAt(0)}
-                                        </div>
-                                        <div className="flex-1">
-                                            <h1 className="text-2xl font-bold text-gray-900">{user.name}</h1>
-                                            <p className="text-[#6E54FF] font-medium">{stats.rank}</p>
-                                        </div>
-                                        <div className="bg-gray-50 px-4 py-2 rounded-xl border border-gray-100">
-                                            <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Total Reputation Score</p>
-                                            <p className="text-3xl font-bold text-[#6E54FF]">{stats.reputationScore}</p>
-                                        </div>
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.1 }}
+                                className="flex flex-col md:flex-row items-center md:items-start gap-6 mb-12"
+                            >
+                                {/* Avatar */}
+                                <div className="relative">
+                                    <div className="w-24 h-24 bg-gradient-to-br from-[#6E54FF] to-[#9F88FF] rounded-2xl flex items-center justify-center text-4xl text-white font-bold shadow-lg shadow-[#6E54FF]/20">
+                                        {user.name.charAt(0)}
                                     </div>
-
-                                    {/* Breakdown Scores */}
-                                    <div className="grid grid-cols-3 gap-4 border-t border-gray-100 pt-8">
-                                        <ScoreRing score={stats.authScore} label="Authenticity" color="#10b981" />
-                                        <ScoreRing score={stats.qualityScore} label="Review Quality" color="#6E54FF" />
-                                        <ScoreRing score={stats.communityScore} label="Community Impact" color="#f43f5e" />
-                                    </div>
+                                    <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-4 border-white"></div>
                                 </div>
-                            </div>
 
-                            <div className="grid md:grid-cols-3 gap-8">
-                                {/* Left Column: Badges & About */}
-                                <div className="space-y-6">
-                                    <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-                                        <h3 className="text-lg font-bold text-gray-900 mb-4">Verified Badges</h3>
-                                        <div className="flex flex-wrap gap-2">
-                                            {stats.badges.map(b => <Badge key={b} name={b} />)}
+                                {/* Info */}
+                                <div className="flex-1 text-center md:text-left">
+                                    <div className="flex items-center justify-center md:justify-start gap-2 mb-1">
+                                        <h1 className="text-2xl font-bold text-gray-900">{user.name}</h1>
+                                        <div className="text-[#6E54FF]">
+                                            <Icons.Verified />
                                         </div>
                                     </div>
-
-                                    {/* Activity Summary */}
-                                    <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-                                        <h3 className="text-lg font-bold text-gray-900 mb-4">Activity Stats</h3>
-                                        <div className="grid grid-cols-1 gap-4">
-                                            <div className="flex justify-between items-center py-2 border-b border-gray-50">
-                                                <span className="text-gray-500">Reviews Posted</span>
-                                                <span className="font-bold text-gray-900">{stats.totalReviews}</span>
-                                            </div>
-                                            <div className="flex justify-between items-center py-2 border-b border-gray-50">
-                                                <span className="text-gray-500">Helpful Votes</span>
-                                                <span className="font-bold text-gray-900">{stats.helpfulVotes}</span>
-                                            </div>
-                                            <div className="flex justify-between items-center py-2">
-                                                <span className="text-gray-500">Disputes Won</span>
-                                                <span className="font-bold text-gray-900">{stats.disputesWon}</span>
-                                            </div>
-                                        </div>
+                                    <p className="text-[#6E54FF] font-medium mb-3">{stats.rank}</p>
+                                    <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
+                                        {stats.badges.map(b => <Badge key={b} name={b} />)}
                                     </div>
                                 </div>
 
-                                {/* Right Column: Detailed Feed (Mock) */}
-                                <div className="md:col-span-2 space-y-6">
-                                    <h3 className="text-xl font-bold text-gray-900">Recent Contributions</h3>
-                                    {[1, 2, 3].map((i) => (
-                                        <div key={i} className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover:border-[#6E54FF]/20 transition-all">
-                                            <div className="flex justify-between items-start mb-3">
-                                                <span className="px-2 py-1 bg-green-50 text-green-700 text-xs rounded font-bold border border-green-100">Verified Purchase</span>
-                                                <span className="text-sm text-gray-400">2 days ago</span>
+                                {/* Reputation Score */}
+                                <div className="text-center md:text-right">
+                                    <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Reputation</p>
+                                    <p className="text-5xl font-bold text-gray-900">{stats.reputationScore}</p>
+                                    <p className="text-sm text-gray-400">out of 1000</p>
+                                </div>
+                            </motion.div>
+
+                            {/* Score Breakdown */}
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.2 }}
+                                className="bg-gray-50/50 rounded-2xl p-6 mb-8"
+                            >
+                                <h3 className="text-lg font-bold text-gray-900 mb-6">Score Breakdown</h3>
+                                <div className="grid md:grid-cols-3 gap-6">
+                                    <ScoreBar score={stats.authScore} label="Authenticity" color="#10b981" />
+                                    <ScoreBar score={stats.qualityScore} label="Review Quality" color="#6E54FF" />
+                                    <ScoreBar score={stats.communityScore} label="Community" color="#f43f5e" />
+                                </div>
+                            </motion.div>
+
+                            {/* Stats Grid */}
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.3 }}
+                                className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12"
+                            >
+                                <StatCard icon={Icons.FileText} label="Reviews" value={stats.totalReviews} />
+                                <StatCard icon={Icons.ThumbsUp} label="Helpful Votes" value={stats.helpfulVotes} />
+                                <StatCard icon={Icons.Trophy} label="Disputes Won" value={stats.disputesWon} />
+                                <StatCard icon={Icons.Coins} label="MR Earned" value={`${stats.tokensEarned}`} />
+                            </motion.div>
+
+                            {/* Recent Activity */}
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.4 }}
+                            >
+                                <div className="flex items-center justify-between mb-6">
+                                    <h3 className="text-lg font-bold text-gray-900">Recent Activity</h3>
+                                    <button className="text-sm text-[#6E54FF] font-medium hover:underline flex items-center gap-1">
+                                        View All <Icons.ChevronRight />
+                                    </button>
+                                </div>
+
+                                <div className="space-y-3">
+                                    {[
+                                        { product: "Uniswap V4", score: 92, reward: 45, time: "2 hours ago" },
+                                        { product: "Monad Bridge", score: 88, reward: 38, time: "1 day ago" },
+                                        { product: "DeFi Protocol X", score: 95, reward: 52, time: "3 days ago" },
+                                    ].map((item, i) => (
+                                        <motion.div
+                                            key={item.product}
+                                            initial={{ opacity: 0, x: -20 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            transition={{ delay: 0.5 + i * 0.1 }}
+                                            className="flex items-center justify-between p-4 bg-white border border-gray-100 rounded-xl hover:border-[#6E54FF]/30 hover:shadow-sm transition-all group"
+                                        >
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-10 h-10 bg-[#6E54FF]/5 rounded-lg flex items-center justify-center text-[#6E54FF]">
+                                                    <Icons.FileText />
+                                                </div>
+                                                <div>
+                                                    <p className="font-medium text-gray-900 group-hover:text-[#6E54FF] transition-colors">{item.product}</p>
+                                                    <p className="text-sm text-gray-500">{item.time}</p>
+                                                </div>
                                             </div>
-                                            <h4 className="font-bold text-gray-900 mb-2">Review for: Decentralized Exchange V2</h4>
-                                            <p className="text-gray-600 text-sm mb-4 leading-relaxed">
-                                                "Excellent user experience and valid liquidity pools. The transaction speed on Monad is noticeable compared to other L1s. However, the UI could use..."
-                                            </p>
-                                            <div className="flex gap-4 text-sm text-gray-500">
-                                                <span className="flex items-center gap-1 hover:text-[#6E54FF] cursor-pointer">👍 24 Helpful</span>
-                                                <span className="flex items-center gap-1 text-[#6E54FF] font-medium">💰 Earned 35 MR</span>
-                                                <span className="flex items-center gap-1">🤖 Quality: 92/100</span>
+                                            <div className="flex items-center gap-6">
+                                                <div className="text-right">
+                                                    <p className="text-xs text-gray-500">Quality</p>
+                                                    <p className="font-bold text-gray-900">{item.score}/100</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-xs text-gray-500">Reward</p>
+                                                    <p className="font-bold text-[#6E54FF]">+{item.reward} MR</p>
+                                                </div>
                                             </div>
-                                        </div>
+                                        </motion.div>
                                     ))}
                                 </div>
-                            </div>
-                        </div>
+                            </motion.div>
+                        </motion.div>
                     )}
                 </div>
             </main>
