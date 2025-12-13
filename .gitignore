@@ -4,3 +4,24 @@ node_modules
 .dist
 admin
 .vercel
+
+# Build artifacts (Foundry)
+artifacts/
+cache/
+out/
+
+# Build artifacts (Hardhat)
+# artifacts/ and cache/ are already covered above
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
