@@ -1,21 +1,21 @@
+import 'dotenv/config';
 import express, { type Request, type Response } from 'express';
 import cors from 'cors';
+import routes from './routes/index.js';
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT;
 
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 
-// Routes
+// API Routes
+app.use('/api', routes);
+
+// Root endpoint
 app.get('/', (req: Request, res: Response) => {
-    res.json({ message: 'Welcome to the API' });
-});
-
-app.get('/health', (req: Request, res: Response) => {
-    res.json({ status: 'OK', timestamp: new Date().toISOString() });
+    res.json({ message: 'Monad API v1.0.0' });
 });
 
 // Start server
