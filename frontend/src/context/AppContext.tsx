@@ -201,12 +201,14 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       const newStakedAmount = stake.status === "fulfilled" ? stake.value.currentStake : null;
       const newHasSufficientStake = stake.status === "fulfilled" ? stake.value.hasSufficientStake : null;
 
-      // Try to get reviews, but don't fail if it errors
+      // Get reviews - this now returns empty array on error instead of throwing
       let reviews: Review[] = [];
       try {
         reviews = await getUserReviews(user.address);
+        console.log(`Fetched ${reviews.length} reviews for user`);
       } catch (error) {
         console.warn("Could not fetch reviews:", error);
+        reviews = []; // Ensure we have an empty array
       }
 
       setBlockchain({
@@ -434,8 +436,62 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         txHash,
       });
 
-      // Refresh user data after submission
+      // Wait for blockchain confirmation before refreshing
+      console.log('Waiting for blockchain state to propagate...');
+      await new Promise(resolve => setTimeout(resolve, 5000)); // Increased wait time
+
+      // Refresh user data after submission with retries
+      let refreshAttempts = 0;
+      const maxAttempts = 10; // Increased retry attempts
+      let previousReviewCount = blockchain.reviews?.length || 0;
+      
+      while (refreshAttempts < maxAttempts) {
+        try {
+          console.log(`Review refresh attempt ${refreshAttempts + 1}/${maxAttempts}`);
+          
+          // Fetch reviews directly first
+          const updatedReviews = await getUserReviews(user.address);
+          console.log(`Found ${updatedReviews.length} reviews (previous: ${previousReviewCount})`);
+          
+          // If we got new reviews, update state immediately
+          if (updatedReviews.length > previousReviewCount) {
+            console.log('New reviews detected! Updating state...');
+            setBlockchain(prev => ({
+              ...prev,
+              reviews: updatedReviews,
+              totalReviews: updatedReviews.length,
+            }));
+            break;
+          }
+          
+          // Also do full refresh
+          await refreshUserData();
+          
+          // Check again after refresh
+          const reviewsAfterRefresh = await getUserReviews(user.address);
+          if (reviewsAfterRefresh.length > previousReviewCount || refreshAttempts >= 5) {
+            console.log('Reviews updated after refresh, breaking retry loop');
+            break;
+          }
+        } catch (error) {
+          console.warn(`Review refresh attempt ${refreshAttempts + 1} failed:`, error);
+        }
+        refreshAttempts++;
+        await new Promise(resolve => setTimeout(resolve, 3000)); // Wait 3 seconds between retries
+      }
+
+      // Final refresh to ensure everything is synced
+      console.log('Performing final refresh...');
       await refreshUserData();
+      
+      // One more direct check
+      const finalReviews = await getUserReviews(user.address);
+      console.log(`Final review count: ${finalReviews.length}`);
+      setBlockchain(prev => ({
+        ...prev,
+        reviews: finalReviews,
+        totalReviews: finalReviews.length,
+      }));
 
       setBlockchain(prev => ({ ...prev, isLoading: false }));
       return txHash;

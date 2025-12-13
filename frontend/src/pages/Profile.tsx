@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { formatEther } from "viem";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { useApp, truncateAddress } from "../context/AppContext";
@@ -249,10 +250,19 @@ const Profile = () => {
                                 <div className="space-y-3">
                                     {blockchain.reviews && blockchain.reviews.length > 0 ? (
                                         blockchain.reviews.slice(0, 5).map((review, i) => {
-                                            const date = new Date(Number(review.timestamp) * 1000);
-                                            const timeAgo = date.toLocaleDateString();
-                                            const qualityScore = Number(review.qualityScore);
-                                            const reward = parseFloat((review.rewardAmount / BigInt(10 ** 18)).toString());
+                                            // Parse contract response properly
+                                            // Contract returns: (content, reviewer, timestamp, validated, rewardAmount, qualityScore)
+                                            const timestamp = Number(review.timestamp || 0n);
+                                            const date = timestamp > 0 ? new Date(timestamp * 1000) : new Date();
+                                            const dateStr = date.toLocaleDateString();
+                                            const timeStr = timestamp > 0 ? date.toLocaleTimeString() : "";
+                                            const qualityScore = Number(review.qualityScore || 0n);
+                                            const rewardAmount = review.rewardAmount || 0n;
+                                            const reward = parseFloat(formatEther(rewardAmount));
+                                            const status = review.validated ? "Verified" : "Pending";
+                                            const contentPreview = review.content ? 
+                                                (review.content.length > 80 ? review.content.substring(0, 80) + "..." : review.content) : 
+                                                "No content";
 
                                             return (
                                                 <motion.div
@@ -262,21 +272,31 @@ const Profile = () => {
                                                     transition={{ delay: 0.5 + i * 0.1 }}
                                                     className="flex items-center justify-between p-4 bg-white border border-gray-100 rounded-xl hover:border-[#6E54FF]/30 hover:shadow-sm transition-all group"
                                                 >
-                                                    <div className="flex items-center gap-4">
-                                                        <div className="w-10 h-10 bg-[#6E54FF]/5 rounded-lg flex items-center justify-center text-[#6E54FF]">
+                                                    <div className="flex items-center gap-4 flex-1 min-w-0">
+                                                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${status === "Verified" ? "bg-green-100 text-green-700" : "bg-[#6E54FF]/5 text-[#6E54FF]"}`}>
                                                             <Icons.FileText />
                                                         </div>
-                                                        <div>
-                                                            <p className="font-medium text-gray-900 group-hover:text-[#6E54FF] transition-colors">
-                                                                Review #{i + 1}
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-center gap-2 mb-1">
+                                                                <p className="font-medium text-gray-900 group-hover:text-[#6E54FF] transition-colors">
+                                                                    Review #{i + 1}
+                                                                </p>
+                                                                {status === "Verified" && (
+                                                                    <span className="px-1.5 py-0.5 bg-green-100 text-green-700 rounded text-xs font-bold">
+                                                                        ✓
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <p className="text-sm text-gray-500 mb-1">{dateStr} {timeStr && `at ${timeStr}`}</p>
+                                                            <p className="text-xs text-gray-600 truncate" title={review.content || "No content"}>
+                                                                {contentPreview}
                                                             </p>
-                                                            <p className="text-sm text-gray-500">{timeAgo}</p>
                                                         </div>
                                                     </div>
-                                                    <div className="flex items-center gap-6">
+                                                    <div className="flex items-center gap-6 flex-shrink-0 ml-4">
                                                         <div className="text-right">
                                                             <p className="text-xs text-gray-500">Quality</p>
-                                                            <p className="font-bold text-gray-900">{qualityScore}/100</p>
+                                                            <p className="font-bold text-gray-900">{qualityScore > 0 ? `${qualityScore}/100` : "Pending"}</p>
                                                         </div>
                                                         {reward > 0 && (
                                                             <div className="text-right">

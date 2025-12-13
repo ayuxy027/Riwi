@@ -103,26 +103,43 @@ const StatCard = ({ label, value, icon, trend }: { label: string; value: string;
 );
 
 const ReviewHistoryItem = ({ review }: { review: Review }) => {
+    // Parse contract response properly
     const status = review.validated ? "Verified" : "Pending";
-    const qualityScore = Number(review.qualityScore);
-    const reward = parseFloat(formatEther(review.rewardAmount));
-    const date = new Date(Number(review.timestamp) * 1000).toLocaleDateString();
+    const qualityScore = Number(review.qualityScore || 0n);
+    const rewardAmount = review.rewardAmount || 0n;
+    const reward = parseFloat(formatEther(rewardAmount));
+    
+    // Handle timestamp - ensure it's valid (contract returns uint256)
+    const timestamp = Number(review.timestamp || 0n);
+    const date = timestamp > 0 ? new Date(timestamp * 1000).toLocaleDateString() : "Unknown date";
+    const timeAgo = timestamp > 0 ? new Date(timestamp * 1000).toLocaleTimeString() : "";
+    
+    // Show review content preview (first 100 chars)
+    const contentPreview = review.content ? 
+        (review.content.length > 100 ? review.content.substring(0, 100) + "..." : review.content) : 
+        "No content";
+    
+    // Format reviewer address
+    const reviewerDisplay = truncateAddress(review.reviewer);
 
     return (
         <div className="flex items-center justify-between p-4 bg-white border border-gray-100 rounded-xl hover:bg-gray-50/80 hover:border-[#6E54FF]/20 transition-all duration-200 group cursor-pointer">
-            <div className="flex items-center gap-4">
-                <div className={`w-1.5 h-12 rounded-full transition-all ${status === "Verified" ? "bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.4)]" : "bg-yellow-500"
+            <div className="flex items-center gap-4 flex-1 min-w-0">
+                <div className={`w-1.5 h-12 rounded-full transition-all flex-shrink-0 ${status === "Verified" ? "bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.4)]" : "bg-yellow-500"
                     }`} />
-                <div>
+                <div className="flex-1 min-w-0">
                     <h4 className="font-semibold text-gray-900 group-hover:text-[#6E54FF] transition-colors flex items-center gap-2">
-                        Review by {truncateAddress(review.reviewer)}
+                        Review by {reviewerDisplay}
                     </h4>
-                    <p className="text-xs text-gray-500 flex items-center gap-1">
-                        <Icons.Layers /> {date}
+                    <p className="text-xs text-gray-500 flex items-center gap-1 mb-1">
+                        <Icons.Layers /> {date} {timeAgo && `at ${timeAgo}`}
+                    </p>
+                    <p className="text-xs text-gray-600 truncate" title={review.content || "No content"}>
+                        {contentPreview}
                     </p>
                 </div>
             </div>
-            <div className="text-right">
+            <div className="text-right flex-shrink-0 ml-4">
                 <div className="flex items-center gap-2 justify-end mb-1">
                     <span className={`px-2 py-0.5 rounded text-xs font-bold flex items-center gap-1 ${status === "Verified" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"
                         }`}>
@@ -131,7 +148,7 @@ const ReviewHistoryItem = ({ review }: { review: Review }) => {
                     </span>
                 </div>
                 <p className="text-sm font-medium text-gray-700">
-                    AI Score: <span className="font-bold text-gray-900">{qualityScore > 0 ? qualityScore : "-"}</span>
+                    AI Score: <span className="font-bold text-gray-900">{qualityScore > 0 ? `${qualityScore}/100` : "Pending"}</span>
                 </p>
                 {reward > 0 && (
                     <p className="text-xs text-[#6E54FF] font-bold flex items-center justify-end gap-1 mt-1">

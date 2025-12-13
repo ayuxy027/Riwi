@@ -49,34 +49,80 @@ export async function getUserBalance(userAddress: Address, excludeDeployerMint: 
 }
 
 // Get user's reputation data
+// Uses getUserStats for efficiency (single call instead of 3 separate calls)
 export async function getUserReputation(userAddress: Address): Promise<UserReputation> {
   try {
-    const [reputationScore, totalReviews, reviewHistory] = await Promise.all([
-      publicClient.readContract({
+    // Try getUserStats first (more efficient - single call)
+    try {
+      const userStats = await publicClient.readContract({
         ...reputationSystemContract,
-        functionName: 'getReputation',
+        functionName: 'getUserStats',
         args: [userAddress],
-      }),
-      publicClient.readContract({
-        ...reputationSystemContract,
-        functionName: 'getTotalReviews',
-        args: [userAddress],
-      }),
-      publicClient.readContract({
-        ...reputationSystemContract,
-        functionName: 'getReviewHistory',
-        args: [userAddress],
-      }),
-    ]);
+      }) as [bigint, bigint, bigint[]];
 
-    return {
-      reputationScore: Number(reputationScore),
-      totalReviews: Number(totalReviews),
-      reviewHistory: (reviewHistory as bigint[]).map(h => Number(h)),
-    };
+      const [reputationScore, totalReviews, reviewHistory] = userStats;
+      const reputation = Number(reputationScore);
+      const total = Number(totalReviews);
+      const history = reviewHistory.map(h => Number(h));
+
+      console.log('Reputation data fetched (via getUserStats):', {
+        address: userAddress,
+        reputationScore: reputation,
+        totalReviews: total,
+        reviewHistoryLength: history.length,
+      });
+
+      return {
+        reputationScore: reputation,
+        totalReviews: total,
+        reviewHistory: history,
+      };
+    } catch (statsError) {
+      // Fallback to individual calls if getUserStats fails
+      console.warn('getUserStats failed, falling back to individual calls:', statsError);
+      const [reputationScore, totalReviews, reviewHistory] = await Promise.all([
+        publicClient.readContract({
+          ...reputationSystemContract,
+          functionName: 'getReputation',
+          args: [userAddress],
+        }).catch(() => 0n), // Default to 0 if error
+        publicClient.readContract({
+          ...reputationSystemContract,
+          functionName: 'getTotalReviews',
+          args: [userAddress],
+        }).catch(() => 0n), // Default to 0 if error
+        publicClient.readContract({
+          ...reputationSystemContract,
+          functionName: 'getReviewHistory',
+          args: [userAddress],
+        }).catch(() => [] as bigint[]), // Default to empty array if error
+      ]);
+
+      const reputation = Number(reputationScore);
+      const total = Number(totalReviews);
+      const history = (reviewHistory as bigint[]).map(h => Number(h));
+
+      console.log('Reputation data fetched (via individual calls):', {
+        address: userAddress,
+        reputationScore: reputation,
+        totalReviews: total,
+        reviewHistoryLength: history.length,
+      });
+
+      return {
+        reputationScore: reputation,
+        totalReviews: total,
+        reviewHistory: history,
+      };
+    }
   } catch (error) {
     console.error('Error getting user reputation:', error);
-    throw error;
+    // Return default values instead of throwing
+    return {
+      reputationScore: 0,
+      totalReviews: 0,
+      reviewHistory: [],
+    };
   }
 }
 
@@ -170,31 +216,87 @@ export async function getUserStake(userAddress: Address): Promise<UserStake> {
 // Get user's reviews
 export async function getUserReviews(userAddress: Address): Promise<Review[]> {
   try {
+    console.log('Fetching reviews for user:', userAddress);
+    
     const reviewIds = await publicClient.readContract({
       ...reviewPlatformContract,
       functionName: 'getReviewsByUser',
       args: [userAddress],
     });
 
+    console.log('Raw reviewIds response:', reviewIds);
+
+    // Handle empty array or null response
     if (!reviewIds || (reviewIds as unknown[]).length === 0) {
+      console.log('No reviews found for user:', userAddress);
       return [];
     }
 
+    const reviewIdsArray = reviewIds as `0x${string}`[];
+    console.log(`Fetching ${reviewIdsArray.length} reviews for user:`, userAddress);
+    console.log('Review IDs:', reviewIdsArray);
+
+    // Fetch all reviews in parallel
     const reviews = await Promise.all(
-      (reviewIds as `0x${string}`[]).map(async (reviewId) => {
-        const review = await publicClient.readContract({
-          ...reviewPlatformContract,
-          functionName: 'getReview',
-          args: [reviewId],
-        });
-        return review as Review;
+      (reviewIds as `0x${string}`[]).map(async (reviewId, index) => {
+        try {
+          const review = await publicClient.readContract({
+            ...reviewPlatformContract,
+            functionName: 'getReview',
+            args: [reviewId],
+          }) as [string, Address, bigint, boolean, bigint, bigint];
+
+          // Contract returns tuple: (content, reviewer, timestamp, validated, rewardAmount, qualityScore)
+          const [content, reviewer, timestamp, validated, rewardAmount, qualityScore] = review;
+
+          console.log(`Review ${index + 1} fetched:`, {
+            reviewId,
+            content: content.substring(0, 50) + '...',
+            reviewer,
+            timestamp: Number(timestamp),
+            validated,
+            rewardAmount: formatEther(rewardAmount),
+            qualityScore: Number(qualityScore),
+          });
+
+          return {
+            content,
+            reviewer,
+            timestamp,
+            validated,
+            rewardAmount,
+            qualityScore,
+          } as Review;
+        } catch (error) {
+          console.error(`Error fetching review ${reviewId}:`, error);
+          // Return a placeholder review instead of failing completely
+          return {
+            content: `Error loading review ${reviewId.slice(0, 8)}...`,
+            reviewer: userAddress,
+            timestamp: 0n,
+            validated: false,
+            rewardAmount: 0n,
+            qualityScore: 0n,
+          } as Review;
+        }
       })
     );
 
-    return reviews;
+    // Filter out any null/undefined reviews and sort by timestamp (newest first)
+    const validReviews = reviews
+      .filter((r): r is Review => r !== null && r !== undefined)
+      .sort((a, b) => {
+        const timeA = Number(a.timestamp);
+        const timeB = Number(b.timestamp);
+        return timeB - timeA; // Newest first
+      });
+
+    console.log(`Successfully fetched ${validReviews.length} reviews`);
+    return validReviews;
   } catch (error) {
     console.error('Error getting user reviews:', error);
-    throw error;
+    // Return empty array instead of throwing to prevent breaking the UI
+    return [];
   }
 }
 
@@ -260,6 +362,8 @@ export async function submitReview(content: string, walletClient: WalletClient, 
       throw new Error('User address not available');
     }
 
+    console.log('Submitting review:', { content: content.substring(0, 50) + '...', userAddress });
+
     // Check stake directly from precompile (same logic as getUserStake)
     // The contract's canUserReview reads wrong field, so we check ourselves
     const stakeData = await getUserStake(userAddress);
@@ -275,8 +379,44 @@ export async function submitReview(content: string, walletClient: WalletClient, 
       args: [content],
     });
 
-    // Wait for transaction receipt
-    const receipt = await publicClient.waitForTransactionReceipt({ hash });
+    console.log('Review transaction submitted, hash:', hash);
+
+    // Wait for transaction receipt with timeout
+    const receipt = await publicClient.waitForTransactionReceipt({ 
+      hash,
+      timeout: 120_000, // 2 minutes timeout
+    });
+
+    console.log('Transaction receipt received:', {
+      status: receipt.status,
+      blockNumber: receipt.blockNumber,
+      logsCount: receipt.logs.length,
+    });
+
+    // Try to extract review ID from event logs
+    const reviewSubmittedEvent = receipt.logs.find(log => {
+      try {
+        // Check if this log is from ReviewPlatform contract
+        if (log.address.toLowerCase() !== reviewPlatformContract.address.toLowerCase()) {
+          return false;
+        }
+        // ReviewSubmitted event signature: keccak256("ReviewSubmitted(bytes32,address,string)")
+        // Event signature: 0x...
+        return true;
+      } catch {
+        return false;
+      }
+    });
+
+    if (reviewSubmittedEvent) {
+      console.log('ReviewSubmitted event found in logs:', reviewSubmittedEvent);
+    } else {
+      console.warn('ReviewSubmitted event not found in logs, but transaction succeeded');
+    }
+
+    // Wait a bit more for state to propagate
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
     return receipt.transactionHash;
   } catch (error) {
     console.error('Error submitting review:', error);
