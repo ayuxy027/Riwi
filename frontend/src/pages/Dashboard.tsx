@@ -152,6 +152,7 @@ const Dashboard = () => {
     const [isReviewOpen, setIsReviewOpen] = useState(false);
     const [isStakingOpen, setIsStakingOpen] = useState(false);
     const [stakeAmount, setStakeAmount] = useState("1");
+    const [isStakingInProgress, setIsStakingInProgress] = useState(false);
 
     useEffect(() => {
         if (user.connected && user.address) {
@@ -378,18 +379,47 @@ const Dashboard = () => {
                             </div>
                             <button
                                 onClick={async () => {
+                                    // Prevent multiple clicks - check both global and local state
+                                    if (isLoading || blockchain.isLoading || isStakingInProgress) {
+                                        return;
+                                    }
+                                    
+                                    // Set local state to prevent multiple clicks
+                                    setIsStakingInProgress(true);
+                                    
                                     try {
                                         await stakeTokens(stakeAmount);
+                                        // Wait a bit for state to update
+                                        await new Promise(resolve => setTimeout(resolve, 1000));
+                                        // Force refresh to update UI
+                                        await refreshUserData();
+                                        // Close modal only after successful staking and refresh
                                         setIsStakingOpen(false);
+                                        // Reset stake amount
+                                        setStakeAmount("1");
                                     } catch (error: unknown) {
                                         const errorMessage = error instanceof Error ? error.message : "Failed to stake tokens. Please try again.";
                                         alert(errorMessage);
+                                        // Don't close modal on error so user can retry
+                                    } finally {
+                                        // Always reset local state
+                                        setIsStakingInProgress(false);
                                     }
                                 }}
-                                disabled={isLoading || parseFloat(stakeAmount) < 1}
+                                disabled={isLoading || blockchain.isLoading || isStakingInProgress || parseFloat(stakeAmount) < 1 || !stakeAmount}
                                 className="w-full px-6 py-3 bg-[#6E54FF] text-white rounded-xl font-medium hover:bg-[#5a42de] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                {isLoading ? "Staking..." : `Stake ${stakeAmount} MON`}
+                                {(isLoading || blockchain.isLoading || isStakingInProgress) ? (
+                                    <span className="flex items-center justify-center gap-2">
+                                        <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        Staking...
+                                    </span>
+                                ) : (
+                                    `Stake ${stakeAmount} MON`
+                                )}
                             </button>
                         </div>
                     </div>

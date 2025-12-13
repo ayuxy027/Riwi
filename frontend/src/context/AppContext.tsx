@@ -344,16 +344,44 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         txHash,
       });
       
-      // Wait a moment for blockchain state to update, then refresh
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Wait for transaction to be confirmed on blockchain
+      await new Promise(resolve => setTimeout(resolve, 3000));
       
-      // Force refresh user data after staking
+      // Force refresh user data after staking - with retries
+      let refreshAttempts = 0;
+      const maxAttempts = 5;
+      
+      while (refreshAttempts < maxAttempts) {
+        try {
+          await refreshUserData();
+          
+          // Check if stake was updated by directly calling the service
+          const updatedStake = await getUserStake(user.address);
+          console.log('Stake after refresh attempt', refreshAttempts + 1, ':', updatedStake);
+          
+          // Update blockchain state directly with new stake data to force UI update
+          setBlockchain(prev => ({
+            ...prev,
+            stakedAmount: updatedStake.currentStake,
+            hasSufficientStake: updatedStake.hasSufficientStake,
+            isLoading: false,
+          }));
+          
+          // If we got valid stake data, break
+          if (updatedStake.currentStake > 0 || refreshAttempts >= 2) {
+            break;
+          }
+        } catch (error) {
+          console.warn('Refresh attempt failed:', error);
+        }
+        
+        refreshAttempts++;
+        // Wait between retries
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+      
+      // Final refresh to ensure UI is updated
       await refreshUserData();
-      
-      // Double-check by refreshing again after a short delay
-      setTimeout(async () => {
-        await refreshUserData();
-      }, 3000);
       
       setBlockchain(prev => ({ ...prev, isLoading: false }));
       setIsLoading(false);

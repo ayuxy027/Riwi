@@ -83,32 +83,59 @@ export async function getUserReputation(userAddress: Address): Promise<UserReput
 // Get user's stake status
 export async function getUserStake(userAddress: Address): Promise<UserStake> {
   try {
+    // Call all three functions in parallel
     const [canReview, stakeAmount, minStake] = await Promise.all([
       publicClient.readContract({
         ...reviewStakingContract,
         functionName: 'canUserReview',
         args: [userAddress],
+      }).catch(err => {
+        console.warn('Error calling canUserReview:', err);
+        return false;
       }),
       publicClient.readContract({
         ...reviewStakingContract,
         functionName: 'getUserStake',
         args: [userAddress],
+      }).catch(err => {
+        console.warn('Error calling getUserStake:', err);
+        return 0n;
       }),
       publicClient.readContract({
         ...reviewStakingContract,
         functionName: 'getMinStakeAmount',
         args: [],
+      }).catch(err => {
+        console.warn('Error calling getMinStakeAmount:', err);
+        return 1000000000000000000n; // Default 1 MON
       }),
     ]);
 
+    const stakeAmountNum = parseFloat(formatEther(stakeAmount as bigint));
+    const minStakeNum = parseFloat(formatEther(minStake as bigint));
+    const hasSufficient = (canReview as boolean) || stakeAmountNum >= minStakeNum;
+
+    console.log('Stake data fetched:', {
+      address: userAddress,
+      stakeAmount: stakeAmountNum,
+      minStake: minStakeNum,
+      hasSufficient,
+      canReview: canReview as boolean,
+    });
+
     return {
-      hasSufficientStake: canReview as boolean,
-      currentStake: parseFloat(formatEther(stakeAmount as bigint)),
-      minStakeAmount: parseFloat(formatEther(minStake as bigint)),
+      hasSufficientStake: hasSufficient,
+      currentStake: stakeAmountNum,
+      minStakeAmount: minStakeNum,
     };
   } catch (error) {
     console.error('Error getting user stake:', error);
-    throw error;
+    // Return default values instead of throwing
+    return {
+      hasSufficientStake: false,
+      currentStake: 0,
+      minStakeAmount: 1,
+    };
   }
 }
 
