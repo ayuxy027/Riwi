@@ -105,6 +105,9 @@ export async function connectWallet(): Promise<WalletConnection> {
     }
 
     // Create wallet client
+    // Note: When using custom(window.ethereum), viem automatically uses the connected account
+    // from the provider. The account property may not be set on the client object itself,
+    // but writeContract will still work because it uses the provider's connected account.
     const walletClient = createWalletClient({
       chain: monadTestnet,
       transport: custom(window.ethereum),

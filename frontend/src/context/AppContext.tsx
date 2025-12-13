@@ -255,7 +255,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     });
 
     try {
-      const txHash = await stakeTokensService(amount, walletClient);
+      const txHash = await stakeTokensService(amount, walletClient, user.address);
       
       setTransaction({
         status: "success",
@@ -295,7 +295,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     });
 
     try {
-      const txHash = await submitReviewService(content, walletClient);
+      const txHash = await submitReviewService(content, walletClient, user.address);
       
       setTransaction({
         status: "success",

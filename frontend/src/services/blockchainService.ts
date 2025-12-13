@@ -144,10 +144,13 @@ export async function getUserReviews(userAddress: Address): Promise<Review[]> {
 }
 
 // Stake MON tokens with validator (required to submit reviews)
-export async function stakeTokens(amount: string, walletClient: WalletClient): Promise<string> {
+export async function stakeTokens(amount: string, walletClient: WalletClient, userAddress: Address): Promise<string> {
   try {
-    if (!walletClient.account?.address) {
-      throw new Error('Wallet account not available');
+    // Note: When using custom(window.ethereum), walletClient.account may not be set,
+    // but viem will use the connected account from the provider automatically.
+    // We pass userAddress explicitly for validation and clarity.
+    if (!userAddress) {
+      throw new Error('User address not available');
     }
 
     // Get validator ID from ReviewStaking contract
@@ -175,6 +178,8 @@ export async function stakeTokens(amount: string, walletClient: WalletClient): P
     const amountWei = parseEther(amount);
 
     // Call delegate function with MON tokens
+    // When using custom(window.ethereum), viem automatically uses the connected account
+    // from the provider, so we don't need to pass account explicitly
     const hash = await walletClient.writeContract({
       address: STAKING_PRECOMPILE,
       abi: stakingABI,
@@ -193,17 +198,17 @@ export async function stakeTokens(amount: string, walletClient: WalletClient): P
 }
 
 // Submit a review (requires wallet connection)
-export async function submitReview(content: string, walletClient: WalletClient): Promise<string> {
+export async function submitReview(content: string, walletClient: WalletClient, userAddress: Address): Promise<string> {
   try {
-    // First check if user can review
-    if (!walletClient.account?.address) {
-      throw new Error('Wallet account not available');
+    // Validate user address
+    if (!userAddress) {
+      throw new Error('User address not available');
     }
 
     const canReview = await publicClient.readContract({
       ...reviewStakingContract,
       functionName: 'canUserReview',
-      args: [walletClient.account.address],
+      args: [userAddress],
     });
 
     if (!canReview) {
