@@ -178,11 +178,12 @@ export async function getUserStake(userAddress: Address): Promise<UserStake> {
     }) as [bigint, bigint, bigint, bigint, bigint, bigint, bigint];
 
     // Extract stake amounts - use deltaStake (index 3) as it's the active stake
-    const stakeAmount = delegatorData[0]; // stake (may be 0)
-    const deltaStake = delegatorData[3]; // deltaStake (active stake)
+    const stakeAmount = delegatorData[0]; // stake (processed stake, may be 0)
+    const deltaStake = delegatorData[3]; // deltaStake (pending/active stake)
     
-    // Use deltaStake if stake is 0, otherwise use stake
-    const activeStake = deltaStake > 0n ? deltaStake : stakeAmount;
+    // Use the maximum of stake and deltaStake as active stake
+    // This ensures we capture the total staked amount regardless of epoch processing
+    const activeStake = deltaStake > stakeAmount ? deltaStake : (stakeAmount > 0n ? stakeAmount : deltaStake);
     
     const stakeAmountNum = parseFloat(formatEther(activeStake));
     const minStakeNum = parseFloat(formatEther(minStake as bigint));
@@ -245,10 +246,32 @@ export async function getUserReviews(userAddress: Address): Promise<Review[]> {
             ...reviewPlatformContract,
             functionName: 'getReview',
             args: [reviewId],
-          }) as [string, Address, bigint, boolean, bigint, bigint];
+          });
 
-          // Contract returns tuple: (content, reviewer, timestamp, validated, rewardAmount, qualityScore)
-          const [content, reviewer, timestamp, validated, rewardAmount, qualityScore] = review;
+          // Contract returns Review struct (tuple) - viem returns it as an object or array
+          // Handle both cases for compatibility
+          let content: string;
+          let reviewer: Address;
+          let timestamp: bigint;
+          let validated: boolean;
+          let rewardAmount: bigint;
+          let qualityScore: bigint;
+
+          if (Array.isArray(review)) {
+            // If it's an array/tuple: (content, reviewer, timestamp, validated, rewardAmount, qualityScore)
+            [content, reviewer, timestamp, validated, rewardAmount, qualityScore] = review as [string, Address, bigint, boolean, bigint, bigint];
+          } else if (typeof review === 'object' && review !== null) {
+            // If it's an object with named properties
+            const reviewObj = review as { content: string; reviewer: Address; timestamp: bigint; validated: boolean; rewardAmount: bigint; qualityScore: bigint };
+            content = reviewObj.content;
+            reviewer = reviewObj.reviewer;
+            timestamp = reviewObj.timestamp;
+            validated = reviewObj.validated;
+            rewardAmount = reviewObj.rewardAmount;
+            qualityScore = reviewObj.qualityScore;
+          } else {
+            throw new Error(`Unexpected review format: ${typeof review}`);
+          }
 
           console.log(`Review ${index + 1} fetched:`, {
             reviewId,

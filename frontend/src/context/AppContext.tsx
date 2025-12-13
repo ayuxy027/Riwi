@@ -346,44 +346,63 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         txHash,
       });
       
-      // Wait for transaction to be confirmed on blockchain
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      // Wait for transaction to be confirmed on blockchain (increased wait time for Monad)
+      console.log('Waiting for staking transaction to be confirmed...');
+      await new Promise(resolve => setTimeout(resolve, 5000)); // Increased to 5 seconds
       
       // Force refresh user data after staking - with retries
       let refreshAttempts = 0;
-      const maxAttempts = 5;
+      const maxAttempts = 8; // Increased attempts
+      let previousStake = blockchain.stakedAmount || 0;
       
       while (refreshAttempts < maxAttempts) {
         try {
-          await refreshUserData();
+          console.log(`Staking refresh attempt ${refreshAttempts + 1}/${maxAttempts}`);
           
-          // Check if stake was updated by directly calling the service
+          // Directly fetch stake data first (bypasses cache)
           const updatedStake = await getUserStake(user.address);
-          console.log('Stake after refresh attempt', refreshAttempts + 1, ':', updatedStake);
+          console.log('Stake data fetched:', {
+            previous: previousStake,
+            current: updatedStake.currentStake,
+            hasSufficient: updatedStake.hasSufficientStake,
+          });
           
-          // Update blockchain state directly with new stake data to force UI update
+          // Update blockchain state immediately with new stake data
           setBlockchain(prev => ({
             ...prev,
             stakedAmount: updatedStake.currentStake,
             hasSufficientStake: updatedStake.hasSufficientStake,
-            isLoading: false,
           }));
           
-          // If we got valid stake data, break
-          if (updatedStake.currentStake > 0 || refreshAttempts >= 2) {
+          // If stake increased or we've tried enough times, break
+          if (updatedStake.currentStake > previousStake || refreshAttempts >= 3) {
+            console.log('Stake updated successfully, breaking retry loop');
             break;
           }
+          
+          // Also do full refresh
+          await refreshUserData();
+          
         } catch (error) {
-          console.warn('Refresh attempt failed:', error);
+          console.warn(`Staking refresh attempt ${refreshAttempts + 1} failed:`, error);
         }
         
         refreshAttempts++;
-        // Wait between retries
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        // Wait between retries (increased wait time)
+        await new Promise(resolve => setTimeout(resolve, 3000));
       }
       
-      // Final refresh to ensure UI is updated
+      // Final refresh to ensure everything is synced
+      console.log('Performing final refresh after staking...');
       await refreshUserData();
+      
+      // One more direct stake check
+      const finalStake = await getUserStake(user.address);
+      setBlockchain(prev => ({
+        ...prev,
+        stakedAmount: finalStake.currentStake,
+        hasSufficientStake: finalStake.hasSufficientStake,
+      }));
       
       setBlockchain(prev => ({ ...prev, isLoading: false }));
       setIsLoading(false);
@@ -436,20 +455,20 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         txHash,
       });
 
-      // Wait for blockchain confirmation before refreshing
+      // Wait for blockchain confirmation before refreshing (increased for Monad)
       console.log('Waiting for blockchain state to propagate...');
-      await new Promise(resolve => setTimeout(resolve, 5000)); // Increased wait time
+      await new Promise(resolve => setTimeout(resolve, 6000)); // Increased wait time for Monad
 
       // Refresh user data after submission with retries
       let refreshAttempts = 0;
-      const maxAttempts = 10; // Increased retry attempts
+      const maxAttempts = 12; // Increased retry attempts
       let previousReviewCount = blockchain.reviews?.length || 0;
       
       while (refreshAttempts < maxAttempts) {
         try {
           console.log(`Review refresh attempt ${refreshAttempts + 1}/${maxAttempts}`);
           
-          // Fetch reviews directly first
+          // Fetch reviews directly first (bypasses cache)
           const updatedReviews = await getUserReviews(user.address);
           console.log(`Found ${updatedReviews.length} reviews (previous: ${previousReviewCount})`);
           
@@ -461,6 +480,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
               reviews: updatedReviews,
               totalReviews: updatedReviews.length,
             }));
+            // Still do full refresh to get balance, reputation, etc.
+            await refreshUserData();
             break;
           }
           
@@ -469,19 +490,26 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           
           // Check again after refresh
           const reviewsAfterRefresh = await getUserReviews(user.address);
-          if (reviewsAfterRefresh.length > previousReviewCount || refreshAttempts >= 5) {
+          console.log(`Reviews after refresh: ${reviewsAfterRefresh.length}`);
+          
+          if (reviewsAfterRefresh.length > previousReviewCount || refreshAttempts >= 6) {
             console.log('Reviews updated after refresh, breaking retry loop');
+            setBlockchain(prev => ({
+              ...prev,
+              reviews: reviewsAfterRefresh,
+              totalReviews: reviewsAfterRefresh.length,
+            }));
             break;
           }
         } catch (error) {
           console.warn(`Review refresh attempt ${refreshAttempts + 1} failed:`, error);
         }
         refreshAttempts++;
-        await new Promise(resolve => setTimeout(resolve, 3000)); // Wait 3 seconds between retries
+        await new Promise(resolve => setTimeout(resolve, 4000)); // Wait 4 seconds between retries
       }
 
       // Final refresh to ensure everything is synced
-      console.log('Performing final refresh...');
+      console.log('Performing final refresh after review submission...');
       await refreshUserData();
       
       // One more direct check
