@@ -136,7 +136,7 @@ export const REWARD_TIERS: TierInfo[] = [
       "Revenue sharing eligibility",
       "Governance proposal rights",
     ],
-    color: "rose",
+    color: "purple",
   },
 ];
 

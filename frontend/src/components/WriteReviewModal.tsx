@@ -74,11 +74,11 @@ const WriteReviewModal = ({ isOpen, onClose, onSubmit }: WriteReviewModalProps) 
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
-            <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden animate-fade-in-up">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+            <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden animate-fade-in-up border border-gray-100">
                 {/* Header */}
-                <div className="px-6 py-4 border-b border-rose-100 flex justify-between items-center bg-gradient-to-r from-rose-50 to-pink-50">
-                    <h2 className="text-xl font-bold text-rose-900">Write a Review</h2>
+                <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                    <h2 className="text-xl font-bold text-gray-900">Write a Review</h2>
                     <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
                         <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -92,7 +92,7 @@ const WriteReviewModal = ({ isOpen, onClose, onSubmit }: WriteReviewModalProps) 
                         <label className="block text-sm font-medium text-gray-700 mb-2">Product / Protocol</label>
                         <input
                             type="text"
-                            className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-rose-500 outline-none transition-all"
+                            className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#6E54FF] focus:border-[#6E54FF] outline-none transition-all placeholder:text-gray-400"
                             placeholder="e.g. Uniswap V3, Monad Wallet"
                             value={product}
                             onChange={(e) => setProduct(e.target.value)}
@@ -120,7 +120,7 @@ const WriteReviewModal = ({ isOpen, onClose, onSubmit }: WriteReviewModalProps) 
                     <div className="mb-6">
                         <label className="block text-sm font-medium text-gray-700 mb-2">Your Experience</label>
                         <textarea
-                            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-rose-500 outline-none transition-all h-32 resize-none"
+                            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#6E54FF] focus:border-[#6E54FF] outline-none transition-all h-32 resize-none placeholder:text-gray-400"
                             placeholder="Share details about usability, transaction speed, fees, and support..."
                             value={content}
                             onChange={(e) => {
@@ -134,7 +134,7 @@ const WriteReviewModal = ({ isOpen, onClose, onSubmit }: WriteReviewModalProps) 
                                 <button
                                     onClick={handleAnalyze}
                                     disabled={isAnalyzing}
-                                    className="text-sm font-medium text-rose-600 hover:text-rose-800 flex items-center gap-1"
+                                    className="text-sm font-medium text-[#6E54FF] hover:text-[#5a42de] flex items-center gap-1 transition-colors"
                                 >
                                     {isAnalyzing ? (
                                         <>
@@ -189,7 +189,7 @@ const WriteReviewModal = ({ isOpen, onClose, onSubmit }: WriteReviewModalProps) 
                 </div>
 
                 {/* Footer actions */}
-                <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3">
+                <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex justify-end gap-3">
                     <button
                         onClick={onClose}
                         className="px-4 py-2 text-gray-600 font-medium hover:bg-gray-100 rounded-xl transition-colors"
@@ -201,7 +201,7 @@ const WriteReviewModal = ({ isOpen, onClose, onSubmit }: WriteReviewModalProps) 
                         disabled={!aiResult || !product || rating === 0}
                         className={`px-6 py-2 text-white font-medium rounded-xl transition-all shadow-lg ${!aiResult || !product || rating === 0
                             ? "bg-gray-300 cursor-not-allowed shadow-none"
-                            : "bg-gradient-to-r from-rose-500 to-pink-500 hover:shadow-rose-500/30 hover:-translate-y-0.5"
+                            : "bg-[#6E54FF] hover:bg-[#5a42de] hover:shadow-[#6E54FF]/30 hover:-translate-y-0.5"
                             }`}
                     >
                         Submit Review

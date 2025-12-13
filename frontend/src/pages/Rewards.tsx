@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { useApp } from "../context/AppContext";
@@ -35,17 +35,17 @@ const REPUTATION_MULTIPLIERS = [
 // ============================================
 
 const RewardCard = ({ label, value, subtext, highlight = false }: { label: string; value: string; subtext?: string; highlight?: boolean }) => (
-    <div className={`p-6 rounded-2xl border ${highlight ? "bg-gradient-to-br from-rose-900 to-pink-900 text-white border-rose-800" : "bg-white border-rose-100"} shadow-sm`}>
-        <p className={`text-sm font-medium mb-1 ${highlight ? "text-rose-100" : "text-rose-600"}`}>{label}</p>
+    <div className={`p-6 rounded-2xl border transition-all hover:shadow-lg ${highlight ? "bg-[#6E54FF] text-white border-[#6E54FF] shadow-lg shadow-[#6E54FF]/20" : "bg-white border-gray-100 hover:border-[#6E54FF]/30"}`}>
+        <p className={`text-sm font-medium mb-1 ${highlight ? "text-white/80" : "text-gray-500"}`}>{label}</p>
         <h3 className="text-3xl font-bold mb-2">{value}</h3>
-        {subtext && <p className={`text-xs ${highlight ? "text-rose-200" : "text-gray-500"}`}>{subtext}</p>}
+        {subtext && <p className={`text-xs ${highlight ? "text-white/60" : "text-gray-400"}`}>{subtext}</p>}
     </div>
 );
 
 const TransactionRow = ({ tx }: { tx: RewardTransaction }) => (
-    <div className="flex items-center justify-between p-4 hover:bg-rose-50 rounded-xl transition-colors border-b border-gray-50 last:border-0">
+    <div className="flex items-center justify-between p-4 hover:bg-gray-50/80 rounded-xl transition-colors border-b border-gray-50 last:border-0 hover:border-gray-200">
         <div className="flex items-center gap-4">
-            <div className="w-10 h-10 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-lg">
+            <div className="w-10 h-10 bg-[#6E54FF]/10 text-[#6E54FF] rounded-full flex items-center justify-center text-lg">
                 💸
             </div>
             <div>
@@ -65,23 +65,25 @@ const LevelCard = ({ level, currentScore }: { level: typeof REPUTATION_MULTIPLIE
     const isCurrent = currentScore >= level.minScore && (REPUTATION_MULTIPLIERS.find(l => l.minScore > level.minScore)?.minScore || Infinity) > currentScore;
 
     return (
-        <div className={`relative p-6 rounded-2xl border-2 transition-all ${isCurrent ? "border-rose-500 bg-rose-50 shadow-lg scale-105 z-10" :
-                isUnlocked ? "border-rose-200 bg-white" : "border-gray-100 bg-gray-50 opacity-60"
+        <div className={`relative p-6 rounded-2xl border-2 transition-all duration-300 ${isCurrent ? "border-[#6E54FF] bg-white shadow-xl shadow-[#6E54FF]/10 scale-105 z-10" :
+            isUnlocked ? "border-gray-200 bg-white" : "border-gray-100 bg-gray-50 opacity-60"
             }`}>
             {isCurrent && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-rose-500 text-white text-xs font-bold px-3 py-1 rounded-full">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#6E54FF] text-white text-xs font-bold px-3 py-1 rounded-full shadow-md">
                     Current Level
                 </div>
             )}
             <div className="flex justify-between items-start mb-4">
                 <h3 className="text-xl font-bold text-gray-900">{level.level}</h3>
-                <span className="bg-rose-100 text-rose-800 text-xs font-bold px-2 py-1 rounded">{level.multiplier} Reward</span>
+                <span className={`text-xs font-bold px-2 py-1 rounded ${isCurrent ? "bg-[#6E54FF]/10 text-[#6E54FF]" : "bg-gray-100 text-gray-600"}`}>
+                    {level.multiplier} Reward
+                </span>
             </div>
-            <p className="text-sm text-gray-600 mb-4">Requires {level.minScore}+ Reputation</p>
+            <p className="text-sm text-gray-500 mb-4">Requires {level.minScore}+ Reputation</p>
             <ul className="space-y-2">
                 {level.benefits.map(b => (
                     <li key={b} className="text-sm flex items-center gap-2 text-gray-700">
-                        <span className="text-green-500">✓</span> {b}
+                        <span className="text-green-500 font-bold">✓</span> {b}
                     </li>
                 ))}
             </ul>
@@ -99,27 +101,27 @@ const Rewards = () => {
     const currentScore = isDemoMode ? 650 : 0; // "Expert" level
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-rose-50 via-white to-pink-50">
+        <div className="min-h-screen bg-gray-50/50">
             <Navbar />
 
             <main className="pt-24 pb-16 px-6">
                 <div className="max-w-6xl mx-auto">
                     <div className="text-center mb-12">
-                        <h1 className="text-3xl md:text-4xl font-bold text-rose-900 mb-3">Rewards & Earnings</h1>
-                        <p className="text-rose-600">Track your earnings and level up your reputation multiplier.</p>
+                        <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3 tracking-tight">Rewards & Earnings</h1>
+                        <p className="text-gray-500 text-lg">Track your earnings and level up your reputation multiplier.</p>
                     </div>
 
                     {!isDemoMode ? (
-                        <div className="text-center py-20 bg-white rounded-3xl border border-rose-100 shadow-sm max-w-2xl mx-auto">
-                            <h2 className="text-xl font-bold text-rose-900 mb-4">Connect to see your stats</h2>
-                            <button onClick={enableDemoMode} className="px-8 py-3 bg-rose-500 text-white rounded-xl font-medium hover:bg-rose-600">
+                        <div className="text-center py-20 bg-white rounded-3xl border border-gray-100 shadow-sm max-w-2xl mx-auto">
+                            <h2 className="text-xl font-bold text-gray-900 mb-4">Connect to see your stats</h2>
+                            <button onClick={enableDemoMode} className="px-8 py-3 bg-[#6E54FF] text-white rounded-xl font-medium hover:bg-[#5a42de] hover:shadow-lg transition-all">
                                 View Demo Data
                             </button>
                         </div>
                     ) : (
                         <>
                             {/* Earnings Overview */}
-                            <div className="grid md:grid-cols-3 gap-6 mb-12">
+                            <div className="grid md:grid-cols-3 gap-6 mb-12 animate-fade-in-up">
                                 <RewardCard
                                     label="Available Balance"
                                     value="2,450 MR"
@@ -139,8 +141,8 @@ const Rewards = () => {
                             </div>
 
                             {/* Reputation Levels */}
-                            <div className="mb-12">
-                                <h2 className="text-2xl font-bold text-rose-900 mb-6">Reputation Multipliers</h2>
+                            <div className="mb-12 animate-fade-in-up" style={{ animationDelay: '100ms' }}>
+                                <h2 className="text-2xl font-bold text-gray-900 mb-6">Reputation Multipliers</h2>
                                 <div className="grid md:grid-cols-4 gap-4">
                                     {REPUTATION_MULTIPLIERS.map((level) => (
                                         <LevelCard key={level.level} level={level} currentScore={currentScore} />
@@ -149,18 +151,18 @@ const Rewards = () => {
                             </div>
 
                             {/* Recent Transactions */}
-                            <div className="bg-white rounded-2xl border border-rose-100 shadow-sm overflow-hidden">
-                                <div className="p-6 border-b border-rose-100 flex justify-between items-center">
-                                    <h2 className="text-xl font-bold text-rose-900">Recent Payouts</h2>
-                                    <button className="text-sm text-rose-600 hover:text-rose-800 font-medium">View Explorer ↗</button>
+                            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden animate-fade-in-up" style={{ animationDelay: '200ms' }}>
+                                <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/30">
+                                    <h2 className="text-xl font-bold text-gray-900">Recent Payouts</h2>
+                                    <button className="text-sm text-[#6E54FF] hover:text-[#5a42de] font-bold">View Explorer ↗</button>
                                 </div>
                                 <div className="divide-y divide-gray-50">
                                     {DEMO_TRANSACTIONS.map((tx) => (
                                         <TransactionRow key={tx.id} tx={tx} />
                                     ))}
                                 </div>
-                                <div className="p-4 text-center bg-gray-50">
-                                    <p className="text-xs text-gray-500">Transaction processing provided by Monad high-throughput blockchain</p>
+                                <div className="p-4 text-center bg-gray-50 border-t border-gray-100">
+                                    <p className="text-xs text-gray-400">Transaction processing provided by Monad high-throughput blockchain</p>
                                 </div>
                             </div>
                         </>

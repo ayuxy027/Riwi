@@ -48,31 +48,31 @@ const INITIAL_HISTORY: ReviewActivity[] = [
 // ============================================
 
 const StatCard = ({ label, value, icon, trend }: { label: string; value: string; icon: string; trend?: string }) => (
-    <div className="bg-white rounded-2xl p-6 border border-rose-100 shadow-sm hover:shadow-md transition-shadow">
+    <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover:border-[#6E54FF]/30 hover:shadow-lg hover:shadow-[#6E54FF]/5 transition-all">
         <div className="flex justify-between items-start mb-4">
-            <div className="w-12 h-12 bg-rose-50 rounded-xl flex items-center justify-center text-2xl">
+            <div className="w-12 h-12 bg-gray-50 text-[#6E54FF] rounded-xl flex items-center justify-center text-2xl border border-gray-100">
                 {icon}
             </div>
             {trend && (
-                <span className="px-2 py-1 bg-green-50 text-green-700 text-xs font-semibold rounded-lg flex items-center gap-1">
+                <span className="px-2 py-1 bg-green-50 text-green-700 text-xs font-semibold rounded-lg flex items-center gap-1 border border-green-100">
                     {trend} ↗
                 </span>
             )}
         </div>
-        <h3 className="text-3xl font-bold text-rose-900 mb-1">{value}</h3>
-        <p className="text-rose-600 text-sm font-medium">{label}</p>
+        <h3 className="text-3xl font-bold text-gray-900 mb-1">{value}</h3>
+        <p className="text-gray-500 text-sm font-medium">{label}</p>
     </div>
 );
 
 const ReviewHistoryItem = ({ review }: { review: ReviewActivity }) => (
-    <div className="flex items-center justify-between p-4 bg-white border border-rose-100 rounded-xl hover:bg-rose-50/50 transition-colors">
+    <div className="flex items-center justify-between p-4 bg-white border border-gray-50 rounded-xl hover:bg-gray-50 transition-colors group">
         <div className="flex items-center gap-4">
             <div className={`w-2 h-12 rounded-full ${review.status === "Verified" ? "bg-green-500" :
                 review.status === "Pending" ? "bg-yellow-500" : "bg-red-500"
                 }`} />
             <div>
-                <h4 className="font-semibold text-rose-900">{review.product}</h4>
-                <p className="text-xs text-rose-500">{review.date}</p>
+                <h4 className="font-semibold text-gray-900 group-hover:text-[#6E54FF] transition-colors">{review.product}</h4>
+                <p className="text-xs text-gray-500">{review.date}</p>
             </div>
         </div>
         <div className="text-right">
@@ -83,11 +83,11 @@ const ReviewHistoryItem = ({ review }: { review: ReviewActivity }) => (
                     {review.status}
                 </span>
             </div>
-            <p className="text-sm font-medium text-rose-800">
-                AI Score: <span className="font-bold">{review.qualityScore > 0 ? review.qualityScore : "-"}</span>
+            <p className="text-sm font-medium text-gray-700">
+                AI Score: <span className="font-bold text-gray-900">{review.qualityScore > 0 ? review.qualityScore : "-"}</span>
             </p>
             {review.reward > 0 && (
-                <p className="text-xs text-rose-600 font-semibold">+{review.reward} MR</p>
+                <p className="text-xs text-[#6E54FF] font-bold">+{review.reward} MR</p>
             )}
         </div>
     </div>
@@ -118,7 +118,7 @@ const Dashboard = () => {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-rose-50 via-white to-pink-50">
+        <div className="min-h-screen bg-gray-50/50">
             <Navbar />
 
             <main className="pt-24 pb-16 px-6">
@@ -126,20 +126,20 @@ const Dashboard = () => {
                     {/* Header */}
                     <div className="flex flex-col md:flex-row items-center justify-between mb-8 gap-4">
                         <div>
-                            <h1 className="text-3xl font-bold text-rose-900 mb-2">Reviewer Dashboard</h1>
-                            <p className="text-rose-600">Welcome back, {user.name || "Guest"}! Here is your impact overview.</p>
+                            <h1 className="text-3xl font-bold text-gray-900 mb-2">Reviewer Dashboard</h1>
+                            <p className="text-gray-500">Welcome back, <span className="text-[#6E54FF] font-semibold">{user.name || "Guest"}</span>! Here is your impact overview.</p>
                         </div>
                         {!isDemoMode ? (
                             <button
                                 onClick={enableDemoMode}
-                                className="px-6 py-3 bg-gradient-to-r from-rose-500 to-pink-500 text-white rounded-xl font-medium shadow-lg hover:shadow-rose-200/50 transition-all"
+                                className="px-6 py-3 bg-[#6E54FF] text-white rounded-xl font-medium shadow-lg hover:bg-[#5a42de] transition-all"
                             >
                                 Enable Demo Mode
                             </button>
                         ) : (
                             <button
                                 onClick={() => setIsReviewOpen(true)}
-                                className="px-6 py-3 bg-rose-900 text-white rounded-xl font-medium shadow-lg hover:bg-rose-800 transition-all flex items-center gap-2"
+                                className="px-6 py-3 bg-[#6E54FF] text-white rounded-xl font-medium shadow-lg hover:shadow-[#6E54FF]/25 hover:-translate-y-0.5 transition-all flex items-center gap-2"
                             >
                                 <span>✍️</span> Write New Review
                             </button>
@@ -177,14 +177,14 @@ const Dashboard = () => {
                             <div className="grid lg:grid-cols-3 gap-8">
                                 {/* Recent Activity */}
                                 <div className="lg:col-span-2 space-y-6">
-                                    <div className="bg-white rounded-2xl p-6 border border-rose-100 shadow-sm">
-                                        <h2 className="text-xl font-bold text-rose-900 mb-6">Recent Reviews</h2>
+                                    <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+                                        <h2 className="text-xl font-bold text-gray-900 mb-6">Recent Reviews</h2>
                                         <div className="space-y-4">
                                             {history.map((review) => (
                                                 <ReviewHistoryItem key={review.id} review={review} />
                                             ))}
                                         </div>
-                                        <button className="w-full mt-6 py-3 text-rose-600 font-medium hover:bg-rose-50 rounded-xl transition-colors">
+                                        <button className="w-full mt-6 py-3 text-gray-500 font-medium hover:bg-gray-50 rounded-xl transition-colors">
                                             View All Activity
                                         </button>
                                     </div>
@@ -193,24 +193,26 @@ const Dashboard = () => {
                                 {/* Quick Actions & Staking Info */}
                                 <div className="space-y-6">
                                     {/* Staking Card */}
-                                    <div className="bg-gradient-to-br from-rose-900 to-pink-900 rounded-2xl p-6 text-white shadow-xl relative overflow-hidden">
-                                        <div className="absolute top-0 right-0 p-4 opacity-10">
+                                    <div className="bg-gradient-to-br from-gray-900 to-[#0E091C] rounded-2xl p-6 text-white shadow-xl relative overflow-hidden">
+                                        <div className="absolute top-0 right-0 p-4 opacity-20">
                                             <svg className="w-32 h-32" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zm0 9l2.5-1.25L12 8.5l-2.5 1.25L12 11zm0 2.5l-5-2.5-5 2.5L12 22l10-8.5-5-2.5-5 2.5z" /></svg>
                                         </div>
-                                        <h3 className="text-lg font-bold mb-2 relative z-10">Staking Status</h3>
+                                        <h3 className="text-lg font-bold mb-2 relative z-10 text-gray-200">Staking Status</h3>
                                         <div className="text-3xl font-bold mb-4 relative z-10">{stats.stakedAmount} MR</div>
-                                        <p className="text-rose-100 text-sm mb-6 relative z-10">
+                                        <p className="text-gray-400 text-sm mb-6 relative z-10">
                                             Your stake ensures review authenticity. Maintain quality to avoid slashing.
                                         </p>
-                                        <button className="w-full py-3 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-xl font-medium transition-all relative z-10 border border-white/10">
+                                        <button className="w-full py-3 bg-[#6E54FF] hover:bg-[#5a42de] text-white rounded-xl font-medium transition-all relative z-10 border border-transparent">
                                             Manage Stake
                                         </button>
                                     </div>
 
                                     {/* AI Insights (Mock) */}
-                                    <div className="bg-rose-50 rounded-2xl p-6 border border-rose-200">
-                                        <h3 className="text-lg font-bold text-rose-900 mb-3">💡 AI Tip</h3>
-                                        <p className="text-rose-700 text-sm leading-relaxed">
+                                    <div className="bg-white rounded-2xl p-6 border border-[#6E54FF]/20 shadow-sm shadow-[#6E54FF]/5">
+                                        <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
+                                            <span className="text-[#6E54FF]">💡</span> AI Tip
+                                        </h3>
+                                        <p className="text-gray-600 text-sm leading-relaxed">
                                             Your reviews containing specific usage details (e.g., transaction speeds, fees) receive <strong>15% higher rewards</strong> on average. Keep it up!
                                         </p>
                                     </div>
@@ -218,17 +220,17 @@ const Dashboard = () => {
                             </div>
                         </div>
                     ) : (
-                        <div className="text-center py-20 bg-white rounded-3xl border border-rose-100 shadow-sm">
-                            <div className="w-24 h-24 bg-rose-50 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl">
+                        <div className="text-center py-20 bg-white rounded-3xl border border-gray-100 shadow-sm">
+                            <div className="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl text-gray-400">
                                 🔒
                             </div>
-                            <h2 className="text-2xl font-bold text-rose-900 mb-4">Dashboard Locked</h2>
-                            <p className="text-rose-600 mb-8 max-w-md mx-auto">
+                            <h2 className="text-2xl font-bold text-gray-900 mb-4">Dashboard Locked</h2>
+                            <p className="text-gray-500 mb-8 max-w-md mx-auto">
                                 Enable demo mode or connect your wallet to view your reputation stats and review history.
                             </p>
                             <button
                                 onClick={enableDemoMode}
-                                className="px-8 py-4 bg-gradient-to-r from-rose-500 to-pink-500 text-white rounded-xl font-medium shadow-lg hover:scale-105 transition-all"
+                                className="px-8 py-4 bg-[#6E54FF] text-white rounded-xl font-medium shadow-lg hover:shadow-[#6E54FF]/25 hover:-translate-y-1 transition-all"
                             >
                                 Enable Demo Mode
                             </button>
