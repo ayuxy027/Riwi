@@ -7,8 +7,6 @@ import {
   type ReactNode,
 } from "react";
 import { connectWallet, disconnectWallet as disconnectWalletService, getCurrentAccount, onAccountsChanged, onChainChanged, isMetaMaskInstalled } from "../services/walletService";
-// MOCK MODE: Use mock service for demo/pitching
-import * as mockService from "../services/mockService";
 import type { Review } from "../services/blockchainService";
 import { getUserStake, getUserReviews, getUserBalance, getUserReputation, submitReview as submitReviewService, stakeTokens as stakeTokensService } from "../services/blockchainService";
 import type { TransactionStatus } from "../components/TransactionToast";
@@ -120,7 +118,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           // Try to connect
           const connection = await connectWallet();
           setUser({
-            address: connection.address,
+            address: connection.address as Address,
             connected: true,
           });
           setWalletClient(connection.walletClient);
@@ -155,7 +153,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           try {
             const connection = await connectWallet();
             setUser({
-              address: connection.address,
+              address: connection.address as Address,
               connected: true,
             });
             setWalletClient(connection.walletClient);
@@ -198,11 +196,11 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     setBlockchain(prev => ({ ...prev, isLoading: true, error: null }));
 
     try {
-      // MOCK MODE: Use mock service
+      // Use UI service functions
       const [balance, reputation, stake] = await Promise.allSettled([
-        mockService.getUserBalance(user.address),
-        mockService.getUserReputation(user.address),
-        mockService.getUserStake(user.address),
+        getUserBalance(user.address),
+        getUserReputation(user.address),
+        getUserStake(user.address),
       ]);
 
       const newBalance = balance.status === "fulfilled" ? balance.value : null;
@@ -210,11 +208,11 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       const newStakedAmount = stake.status === "fulfilled" ? stake.value.currentStake : null;
       const newHasSufficientStake = stake.status === "fulfilled" ? stake.value.hasSufficientStake : null;
 
-      // MOCK MODE: Get reviews from mock service
+      // Get reviews from UI service
       let reviews: Review[] = [];
       try {
-        reviews = await mockService.getUserReviews(user.address) as Review[];
-        console.log(`Fetched ${reviews.length} reviews for user (MOCK)`);
+        reviews = await getUserReviews(user.address);
+        console.log(`Fetched ${reviews.length} reviews for user (UI)`);
       } catch (error) {
         console.warn("Could not fetch reviews:", error);
         reviews = [];
@@ -269,7 +267,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
       // Update user state
       const newUser = {
-        address: connection.address,
+        address: connection.address as Address,
         connected: true,
       };
       setUser(newUser);

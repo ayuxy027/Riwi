@@ -266,7 +266,6 @@ const Profile = () => {
                                             const status = review.validated ? "Verified ✓" : "Awaiting Validation";
                                             // Show full content, not just preview
                                             const reviewContent = review.content || "No content available";
-                                            const contentPreview = reviewContent.length > 100 ? reviewContent.substring(0, 100) + "..." : reviewContent;
 
                                             return (
                                                 <motion.div

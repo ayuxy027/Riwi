@@ -1,7 +1,8 @@
-// Mock blockchain service for demo UI
-// This service simulates blockchain interactions for demonstration purposes
-import { type Address } from 'viem';
-import { mockService } from './mockService';
+// UI Service for demo UI
+// This service provides mock data for demonstration purposes
+
+// Define Address type for UI purposes
+type Address = `0x${string}`;
 
 export interface UserReputation {
   reputationScore: number;
@@ -26,12 +27,12 @@ export interface Review {
 }
 
 // Get user's token balance (mock)
-export async function getUserBalance(userAddress: Address, excludeDeployerMint: boolean = true): Promise<number> {
+export async function getUserBalance(_userAddress: Address, _excludeDeployerMint: boolean = true): Promise<number> {
   try {
-    // Use mock service to get balance
-    const balance = await mockService.getUserBalance(userAddress);
-    console.log('Mock balance retrieved:', balance);
-    return balance;
+    // Return mock balance for demo purposes
+    // Parameters not used in mock implementation
+    console.log('Mock balance retrieved for demo');
+    return 1250.50; // Fixed demo value
   } catch (error) {
     console.error('Error getting user balance:', error);
     return 0;
@@ -39,11 +40,14 @@ export async function getUserBalance(userAddress: Address, excludeDeployerMint: 
 }
 
 // Get user's reputation data (mock)
-export async function getUserReputation(userAddress: Address): Promise<UserReputation> {
+export async function getUserReputation(_userAddress: Address): Promise<UserReputation> {
   try {
-    const reputation = await mockService.getUserReputation(userAddress);
-    console.log('Mock reputation retrieved:', reputation);
-    return reputation;
+    console.log('Mock reputation retrieved for demo');
+    return {
+      reputationScore: 450,
+      totalReviews: 8,
+      reviewHistory: [85, 75, 90, 80, 92, 78, 88, 95],
+    };
   } catch (error) {
     console.error('Error getting user reputation:', error);
     // Return default values instead of throwing
@@ -56,15 +60,14 @@ export async function getUserReputation(userAddress: Address): Promise<UserReput
 }
 
 // Get user's stake status (mock)
-export async function getUserStake(userAddress: Address): Promise<UserStake> {
+export async function getUserStake(_userAddress: Address): Promise<UserStake> {
   try {
-    const stake = await mockService.getUserStake(userAddress);
-    console.log('Mock stake data retrieved:', stake);
+    console.log('Mock stake data retrieved for demo');
     return {
-      hasSufficientStake: stake.hasSufficientStake,
-      currentStake: stake.currentStake,
-      minStakeAmount: stake.minStakeAmount,
-      validatorId: stake.validatorId,
+      hasSufficientStake: true,
+      currentStake: 2.5,
+      minStakeAmount: 1,
+      validatorId: 1,
     };
   } catch (error) {
     console.error('Error getting user stake:', error);
@@ -78,12 +81,36 @@ export async function getUserStake(userAddress: Address): Promise<UserStake> {
 }
 
 // Get user's reviews (mock)
-export async function getUserReviews(userAddress: Address): Promise<Review[]> {
+export async function getUserReviews(_userAddress: Address): Promise<Review[]> {
   try {
-    console.log('Fetching mock reviews for user:', userAddress);
-    const reviews = await mockService.getUserReviews(userAddress);
-    console.log('Mock reviews retrieved:', reviews);
-    return reviews;
+    console.log('Fetching mock reviews for demo');
+    // Return fixed demo reviews
+    return [
+      {
+        content: "Amazing hotel experience! The service was exceptional and the staff went above and beyond. Highly recommend this place for anyone visiting.",
+        reviewer: "0xab1c13383A82a4E0d1A5D56ad0C9691BBCddd617" as Address,
+        timestamp: BigInt(Math.floor(Date.now() / 1000) - 86400 * 2), // 2 days ago
+        validated: true,
+        rewardAmount: BigInt(125000000000000000000), // 125 RVT
+        qualityScore: BigInt(85),
+      },
+      {
+        content: "Great restaurant with excellent food quality. The ambiance was perfect and the staff was very attentive. Will definitely come back!",
+        reviewer: "0xab1c13383A82a4E0d1A5D56ad0C9691BBCddd617" as Address,
+        timestamp: BigInt(Math.floor(Date.now() / 1000) - 86400 * 5), // 5 days ago
+        validated: true,
+        rewardAmount: BigInt(106250000000000000000), // 106.25 RVT
+        qualityScore: BigInt(75),
+      },
+      {
+        content: "Outstanding service and beautiful location. The rooms were clean and comfortable. Perfect for a weekend getaway.",
+        reviewer: "0xab1c13383A82a4E0d1A5D56ad0C9691BBCddd617" as Address,
+        timestamp: BigInt(Math.floor(Date.now() / 1000) - 86400 * 7), // 7 days ago
+        validated: true,
+        rewardAmount: BigInt(162500000000000000000), // 162.5 RVT
+        qualityScore: BigInt(90),
+      },
+    ];
   } catch (error) {
     console.error('Error getting user reviews:', error);
     // Return empty array instead of throwing to prevent breaking the UI
@@ -92,12 +119,13 @@ export async function getUserReviews(userAddress: Address): Promise<Review[]> {
 }
 
 // Stake MON tokens with validator (mock)
-export async function stakeTokens(amount: string, walletClient: any, userAddress: Address): Promise<string> {
+export async function stakeTokens(amount: string, _walletClient: any, _userAddress: Address): Promise<string> {
   try {
-    console.log('Staking tokens (mock):', { amount, userAddress });
-    const txHash = await mockService.stakeTokens(amount, userAddress);
-    console.log('Mock stake transaction completed:', txHash);
-    return txHash;
+    console.log('Staking tokens (mock):', { amount });
+    // Simulate transaction with a fake hash
+    const fakeTxHash = `0x${Math.random().toString(16).substring(2, 66)}`;
+    console.log('Mock stake transaction completed:', fakeTxHash);
+    return fakeTxHash;
   } catch (error) {
     console.error('Error staking tokens:', error);
     throw error;
@@ -105,20 +133,21 @@ export async function stakeTokens(amount: string, walletClient: any, userAddress
 }
 
 // Submit a review (mock)
-export async function submitReview(content: string, walletClient: any, userAddress: Address): Promise<string> {
+export async function submitReview(content: string, _walletClient: any, _userAddress: Address): Promise<string> {
   try {
-    console.log('Submitting review (mock):', { content: content.substring(0, 50) + '...', userAddress });
-    
-    // Check stake before submission (mock validation)
-    const stakeData = await getUserStake(userAddress);
-    
+    console.log('Submitting review (mock):', { content: content.substring(0, 50) + '...' });
+
+    // Check stake before submission (mock validation) using a default address
+    const stakeData = await getUserStake("0x0000000000000000000000000000000000000000" as Address);
+
     if (!stakeData.hasSufficientStake) {
       throw new Error(`Insufficient stake. You have ${stakeData.currentStake.toFixed(2)} MON staked, but need at least ${stakeData.minStakeAmount.toFixed(2)} MON to submit reviews.`);
     }
-    
-    const txHash = await mockService.submitReview(content, userAddress);
-    console.log('Mock review submission completed:', txHash);
-    return txHash;
+
+    // Simulate transaction with a fake hash
+    const fakeTxHash = `0x${Math.random().toString(16).substring(2, 66)}`;
+    console.log('Mock review submission completed:', fakeTxHash);
+    return fakeTxHash;
   } catch (error) {
     console.error('Error submitting review:', error);
     throw error;
@@ -200,10 +229,10 @@ export async function calculateCashoutAmount(rvtAmount: string): Promise<number>
  */
 export async function approveRvtForCashout(
   amount: string,
-  walletClient: any,
-  userAddress: Address
+  _walletClient: any,
+  _userAddress: Address
 ): Promise<string> {
-  console.log('Approving RVT for cashout (mock):', { amount, userAddress });
+  console.log('Approving RVT for cashout (mock):', { amount });
   // In mock implementation, just return a fake transaction hash
   return `0x${Math.random().toString(16).substring(2, 66)}`;
 }
@@ -213,8 +242,8 @@ export async function approveRvtForCashout(
  */
 export async function executeCashout(
   rvtAmount: string,
-  walletClient: any,
-  userAddress: Address
+  _walletClient: any,
+  _userAddress: Address
 ): Promise<string> {
   const amount = parseFloat(rvtAmount);
   if (amount <= 0) {
@@ -241,7 +270,7 @@ export async function executeCashout(
   }
 
   // Check user's RVT balance
-  const userStats = await getUserCashoutStats(userAddress);
+  const userStats = await getUserCashoutStats("0x0000000000000000000000000000000000000000" as Address);
   if (amount > userStats.rvtBalance) {
     throw new Error(`Insufficient RVT balance. You have ${userStats.rvtBalance.toFixed(2)} RVT`);
   }

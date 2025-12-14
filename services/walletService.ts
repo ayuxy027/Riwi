@@ -1,6 +1,8 @@
-// Mock wallet service for demo UI
-// This service simulates wallet interactions for demonstration purposes
-import { type Address } from 'viem';
+// UI Wallet Service for demo
+// Provides mock wallet functionality for UI demonstration
+
+// Define Address type for UI purposes
+export type Address = `0x${string}`;
 
 export interface WalletConnection {
   address: Address;
@@ -15,11 +17,9 @@ const MOCK_ADDRESSES = [
   "0x1234567890123456789012345678901234567890",
 ];
 
-let connectedAddress: Address | null = null;
-
-// Check if MetaMask is installed (mock)
+// Check if MetaMask is available (mock)
 export function isMetaMaskInstalled(): boolean {
-  // In demo mode, we'll simulate MetaMask is available
+  // For demo purposes, simulate MetaMask is available
   return true;
 }
 
@@ -27,8 +27,7 @@ export function isMetaMaskInstalled(): boolean {
 export async function connectWallet(): Promise<WalletConnection> {
   // For demo purposes, use a random mock address
   const randomIndex = Math.floor(Math.random() * MOCK_ADDRESSES.length);
-  const address = MOCK_ADDRESSES[randomIndex] as Address;
-  connectedAddress = address;
+  const address = MOCK_ADDRESSES[randomIndex];
 
   // Create a mock wallet client
   const mockWalletClient = {
@@ -44,24 +43,28 @@ export async function connectWallet(): Promise<WalletConnection> {
   console.log('Mock wallet connected:', address);
 
   return {
-    address,
+    address: address as Address,
     walletClient: mockWalletClient,
   };
 }
 
 // Disconnect wallet
 export function disconnectWallet(): void {
-  connectedAddress = null;
   console.log('Mock wallet disconnected');
 }
 
 // Get current connected account
 export async function getCurrentAccount(): Promise<Address | null> {
-  return connectedAddress;
+  // In demo mode, return a random address or null
+  if (Math.random() > 0.5) {
+    const randomIndex = Math.floor(Math.random() * MOCK_ADDRESSES.length);
+    return MOCK_ADDRESSES[randomIndex] as Address;
+  }
+  return null;
 }
 
 // Listen for account changes (mock)
-export function onAccountsChanged(callback: (accounts: Address[]) => void): () => void {
+export function onAccountsChanged(_callback: (accounts: Address[]) => void): () => void {
   // In mock, we don't listen for actual changes
   console.log('Mock account change listener registered');
   return () => {
@@ -70,7 +73,7 @@ export function onAccountsChanged(callback: (accounts: Address[]) => void): () =
 }
 
 // Listen for chain changes (mock)
-export function onChainChanged(callback: (chainId: string) => void): () => void {
+export function onChainChanged(_callback: (chainId: string) => void): () => void {
   // In mock, we don't listen for actual changes
   console.log('Mock chain change listener registered');
   return () => {
