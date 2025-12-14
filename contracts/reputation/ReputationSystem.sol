@@ -114,4 +114,14 @@ contract ReputationSystem is Ownable {
     function getUserStats(address user) external view returns (uint256 reputation, uint256 totalRev, uint256[] memory history) {
         return (reputationScores[user], totalReviews[user], reviewHistory[user]);
     }
+
+    /**
+     * @dev Helper function to transfer ownership to a new platform
+     * This allows the current owner (old platform) to transfer ownership to new platform
+     * @param newOwner The address of the new owner (new ReviewPlatform)
+     */
+    function transferOwnershipToPlatform(address newOwner) external onlyOwner {
+        require(newOwner != address(0), "New owner cannot be zero address");
+        _transferOwnership(newOwner);
+    }
 }

@@ -113,9 +113,9 @@ function getBadgesFromReputation(reputation: number, totalReviews: number): stri
 const Profile = () => {
     const { user, blockchain, connectWallet, isLoading } = useApp();
 
-    const reputation = blockchain.reputation || 0;
-    const totalReviews = blockchain.totalReviews || 0;
-    const tokensEarned = blockchain.balance || 0;
+    const reputation = blockchain.reputation ?? 0;
+    const totalReviews = blockchain.totalReviews ?? 0;
+    const tokensEarned = blockchain.balance ?? 0;
     const rank = getRankFromScore(reputation);
     const badges = getBadgesFromReputation(reputation, totalReviews);
 
@@ -227,9 +227,9 @@ const Profile = () => {
                                 className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12"
                             >
                                 <StatCard icon={Icons.FileText} label="Reviews" value={totalReviews} />
-                                <StatCard icon={Icons.Coins} label="RVT Balance" value={tokensEarned.toFixed(2)} />
+                                <StatCard icon={Icons.Coins} label="RVT Balance" value={typeof tokensEarned === 'number' ? tokensEarned.toFixed(2) : '0.00'} />
                                 <StatCard icon={Icons.Trophy} label="Reputation" value={reputation} />
-                                <StatCard icon={Icons.ThumbsUp} label="Staked" value={`${blockchain.stakedAmount?.toFixed(2) || "0.00"} MON`} />
+                                <StatCard icon={Icons.ThumbsUp} label="Staked" value={`${blockchain.stakedAmount ? parseFloat(blockchain.stakedAmount.toString()).toFixed(2) : "0.00"} MON`} />
                             </motion.div>
 
                             {/* Recent Activity */}

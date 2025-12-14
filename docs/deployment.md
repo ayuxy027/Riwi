@@ -11,10 +11,10 @@ The contract suite has been successfully deployed to the Monad testnet. All cont
 The following are the actual deployed contract addresses on Monad testnet:
 
 ```
-ReviewToken:        0x9Ce50706CD0F73bB5502b7AA0a8cD17D8513de83          # ERC-20 reward token
-ReputationSystem:   0xF158be31A900cA8B2Be13BBd22D9d81E64764DBC          # Reputation tracking
+ReviewToken:        0x579521fAf544FEE9a793a4FB6D3A78377EBCC680          # ERC-20 reward token
+ReputationSystem:   0x308493Ea984632669A3A6Ecd46216A4858F6C137          # Reputation tracking
 ReviewStaking:      0xCd9352bFBCDfAB07EE8e664A64ECe191c1836180          # Staking verification (Updated)
-ReviewPlatform:     0x40C11dF88eEf1B1276978b750e315E49A929D10d          # Main orchestration
+ReviewPlatform:     0xC98C12Fce07E5D1fbDf0836BCe2bc245d5d27347          # Main orchestration
 ```
 
 **Note**: ReviewStaking was updated to fix deltaStake checking. Previous address: `0x51F7cbd74731976d834a67F156dBC387CCc59c1D` (deprecated)
@@ -31,19 +31,19 @@ You can verify these contracts on the Monad testnet explorer or interact with th
 
 ```bash
 # Check ReviewToken owner (should be ReviewPlatform)
-cast call 0x9Ce50706CD0F73bB5502b7AA0a8cD17D8513de83 "owner()" \
+cast call 0x579521fAf544FEE9a793a4FB6D3A78377EBCC680 "owner()" \
   --rpc-url https://testnet-rpc.monad.xyz --legacy
 
 # Check ReputationSystem owner (should be ReviewPlatform)
-cast call 0xF158be31A900cA8B2Be13BBd22D9d81E64764DBC "owner()" \
+cast call 0x308493Ea984632669A3A6Ecd46216A4858F6C137 "owner()" \
   --rpc-url https://testnet-rpc.monad.xyz --legacy
 
 # Check ReviewPlatform contract addresses
-cast call 0x40C11dF88eEf1B1276978b750e315E49A929D10d "reviewToken()" \
+cast call 0xC98C12Fce07E5D1fbDf0836BCe2bc245d5d27347 "reviewToken()" \
   --rpc-url https://testnet-rpc.monad.xyz --legacy
-cast call 0x40C11dF88eEf1B1276978b750e315E49A929D10d "reputationSystem()" \
+cast call 0xC98C12Fce07E5D1fbDf0836BCe2bc245d5d27347 "reputationSystem()" \
   --rpc-url https://testnet-rpc.monad.xyz --legacy
-cast call 0x40C11dF88eEf1B1276978b750e315E49A929D10d "reviewStaking()" \
+cast call 0xC98C12Fce07E5D1fbDf0836BCe2bc245d5d27347 "reviewStaking()" \
   --rpc-url https://testnet-rpc.monad.xyz --legacy
 ```
 

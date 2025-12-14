@@ -97,9 +97,10 @@ contract ReviewPlatform is Ownable {
 
     /**
      * @dev Validate a review and distribute rewards
-     * This function is called by the AI/validator after review validation
+     * If qualityScore >= 60, automatically validates and calculates reward
+     * If qualityScore < 60, review is rejected (no rewards)
      * @param reviewId The ID of the review to validate
-     * @param rewardAmount The amount of tokens to reward
+     * @param rewardAmount The amount of tokens to reward (ignored if score >= 60, auto-calculated)
      * @param qualityScore The quality score assigned by AI (0-100)
      */
     function validateReview(bytes32 reviewId, uint256 rewardAmount, uint256 qualityScore) public onlyOwner {
@@ -107,23 +108,82 @@ contract ReviewPlatform is Ownable {
         require(reviews[reviewId].reviewer != address(0), "Review does not exist");
         require(qualityScore <= 100, "Quality score must be between 0 and 100");
 
-        // Update the review status
-        reviews[reviewId].validated = true;
-        reviews[reviewId].rewardAmount = rewardAmount;
-        reviews[reviewId].qualityScore = qualityScore;
+        address reviewer = reviews[reviewId].reviewer;
+
+        // If quality score is >= 60, automatically validate and reward
+        if (qualityScore >= 60) {
+            // Calculate reward based on quality score (higher score = more reward)
+            // Base reward: 50 RVT, max reward: 200 RVT for score of 100
+            // Formula: 50 + (qualityScore - 60) * 3.75
+            // This gives: 50 RVT for 60, ~100 RVT for 80, 200 RVT for 100
+            uint256 baseReward = 50 * 10**18; // 50 RVT in wei
+            uint256 bonusReward = ((qualityScore - 60) * 375 * 10**15); // Bonus for scores above 60
+            uint256 calculatedReward = baseReward + bonusReward;
+
+            // Update the review status
+            reviews[reviewId].validated = true;
+            reviews[reviewId].rewardAmount = calculatedReward;
+            reviews[reviewId].qualityScore = qualityScore;
+
+            // Mint tokens for the review
+            reviewToken.mintForReview(reviewer, calculatedReward);
+
+            // Update reputation based on quality score
+            reputationSystem.updateReputationWithScore(reviewer, qualityScore);
+
+            emit ReviewValidated(reviewId, calculatedReward, qualityScore);
+            emit RewardDistributed(reviewer, calculatedReward);
+        } else {
+            // Score < 60: Mark as rejected (store score but don't validate/reward)
+            reviews[reviewId].qualityScore = qualityScore;
+            // Review remains validated = false, so it won't show as validated
+            emit ReviewValidated(reviewId, 0, qualityScore);
+        }
+    }
+
+    /**
+     * @dev Auto-validate review based on AI quality score
+     * If quality score is >= 60, automatically validates and distributes rewards
+     * If quality score < 60, marks review as rejected (no rewards)
+     * @param reviewId The ID of the review to evaluate
+     * @param qualityScore The quality score assigned by AI (0-100)
+     */
+    function autoValidateReview(bytes32 reviewId, uint256 qualityScore) public onlyOwner {
+        require(!reviews[reviewId].validated, "Review already validated");
+        require(reviews[reviewId].reviewer != address(0), "Review does not exist");
+        require(qualityScore <= 100, "Quality score must be between 0 and 100");
 
         address reviewer = reviews[reviewId].reviewer;
 
-        // Mint tokens for the review
-        if (rewardAmount > 0) {
+        // If quality score is >= 60, automatically validate and reward
+        if (qualityScore >= 60) {
+            // Calculate reward based on quality score (higher score = more reward)
+            // Base reward: 50 RVT, max reward: 200 RVT for score of 100
+            // Formula: 50 + (qualityScore - 60) * 3.75
+            // This gives: 50 RVT for 60, ~100 RVT for 80, 200 RVT for 100
+            uint256 baseReward = 50 * 10**18; // 50 RVT in wei
+            uint256 bonusReward = ((qualityScore - 60) * 375 * 10**15); // Bonus for scores above 60
+            uint256 rewardAmount = baseReward + bonusReward;
+
+            // Update the review status
+            reviews[reviewId].validated = true;
+            reviews[reviewId].rewardAmount = rewardAmount;
+            reviews[reviewId].qualityScore = qualityScore;
+
+            // Mint tokens for the review
             reviewToken.mintForReview(reviewer, rewardAmount);
+
+            // Update reputation based on quality score
+            reputationSystem.updateReputationWithScore(reviewer, qualityScore);
+
+            emit ReviewValidated(reviewId, rewardAmount, qualityScore);
+            emit RewardDistributed(reviewer, rewardAmount);
+        } else {
+            // Score < 60: Mark as rejected (store score but don't validate/reward)
+            reviews[reviewId].qualityScore = qualityScore;
+            // Review remains validated = false, so it won't show as validated
+            emit ReviewValidated(reviewId, 0, qualityScore);
         }
-
-        // Update reputation based on quality score
-        reputationSystem.updateReputationWithScore(reviewer, qualityScore);
-
-        emit ReviewValidated(reviewId, rewardAmount, qualityScore);
-        emit RewardDistributed(reviewer, rewardAmount);
     }
 
     /**
@@ -154,6 +214,23 @@ contract ReviewPlatform is Ownable {
     }
 
     /**
+     * @dev Batch auto-validate multiple reviews based on AI scores
+     * Automatically validates reviews with score >= 60, rejects those < 60
+     * @param reviewIds Array of review IDs to evaluate
+     * @param qualityScores Array of quality scores for each review (0-100)
+     */
+    function batchAutoValidateReviews(
+        bytes32[] memory reviewIds,
+        uint256[] memory qualityScores
+    ) external onlyOwner {
+        require(reviewIds.length == qualityScores.length, "Array lengths must match");
+
+        for (uint256 i = 0; i < reviewIds.length; i++) {
+            autoValidateReview(reviewIds[i], qualityScores[i]);
+        }
+    }
+
+    /**
      * @dev Batch validate multiple reviews
      * Useful for processing multiple AI-validated reviews at once
      * @param reviewIds Array of review IDs to validate
@@ -171,6 +248,15 @@ contract ReviewPlatform is Ownable {
         for (uint256 i = 0; i < reviewIds.length; i++) {
             validateReview(reviewIds[i], rewardAmounts[i], qualityScores[i]);
         }
+    }
+
+    /**
+     * @dev Update the review token contract address
+     * @param _newReviewToken The new review token address
+     */
+    function setReviewToken(address _newReviewToken) external onlyOwner {
+        require(_newReviewToken != address(0), "Review token address cannot be zero");
+        reviewToken = ReviewToken(_newReviewToken);
     }
 
     /**

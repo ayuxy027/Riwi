@@ -84,7 +84,7 @@ The Monad AI-Assisted Review System is a decentralized review platform that comb
 
 **Purpose**: Main contract managing the complete review lifecycle
 
-**Contract Address**: `0x40C11dF88eEf1B1276978b750e315E49A929D10d`
+**Contract Address**: `0x2C87134c4Ca84E23B04bcE7dD671BbbcFB3Da195`
 
 **Structs**:
 - `struct Review`: 
@@ -97,7 +97,9 @@ The Monad AI-Assisted Review System is a decentralized review platform that comb
 
 **Functions**:
 - `submitReview(string calldata content)` - Submits a review after stake verification (external)
-- `validateReview(bytes32 reviewId, uint256 rewardAmount, uint256 qualityScore)` - Validates and rewards reviews (only owner)
+- `validateReview(bytes32 reviewId, uint256 rewardAmount, uint256 qualityScore)` - Validates and rewards reviews (only owner). **Auto-validates if qualityScore >= 60, auto-rejects if < 60**
+- `autoValidateReview(bytes32 reviewId, uint256 qualityScore)` - Auto-validates based on AI score (only owner). If score >= 60: validates and rewards. If < 60: rejects
+- `batchAutoValidateReviews(bytes32[] memory reviewIds, uint256[] memory qualityScores)` - Batch auto-validate multiple reviews (only owner)
 - `batchValidateReviews(bytes32[] memory reviewIds, uint256[] memory rewardAmounts, uint256[] memory qualityScores)` - Validates multiple reviews at once (only owner)
 - `getReview(bytes32 reviewId)` - Returns review details (external view)
 - `getReviewsByUser(address user)` - Returns all review IDs for a user (external view)
@@ -157,13 +159,22 @@ The Monad AI-Assisted Review System is a decentralized review platform that comb
 
 ## Recent Updates
 
-### ReviewStaking Contract Fix (Latest)
+### ReviewPlatform Auto-Validation Update (Latest)
+- **Feature**: Automatic validation based on AI quality score
+- **Logic**: 
+  - If `qualityScore >= 60`: Automatically validates, calculates and distributes rewards (50-200 RVT), updates reputation
+  - If `qualityScore < 60`: Automatically rejects (no rewards)
+- **Reward Formula**: 50 RVT base + (score - 60) × 3.75 RVT bonus
+- **New Functions**: `autoValidateReview()` and `batchAutoValidateReviews()`
+- **New Address**: `0x2C87134c4Ca84E23B04bcE7dD671BbbcFB3Da195`
+- **Previous Address**: `0x2C87134c4Ca84E23B04bcE7dD671BbbcFB3Da195` (deprecated)
+
+### ReviewStaking Contract Fix
 - **Issue**: Original contract (`0x51F7cbd74731976d834a67F156dBC387CCc59c1D`) only checked `stake` field from Monad's staking precompile
 - **Problem**: New stakes are stored in `deltaStake` (index 3) and only moved to `stake` (index 0) after epoch processing
 - **Impact**: Users with valid stakes in `deltaStake` were unable to submit reviews
 - **Solution**: Deployed new contract (`0xCd9352bFBCDfAB07EE8e664A64ECe191c1836180`) that checks both `stake` and `deltaStake`
 - **Result**: Users can now submit reviews immediately after staking
-- **Status**: ReviewPlatform has been updated to use the new staking contract
 
 ## Contract Inheritance
 

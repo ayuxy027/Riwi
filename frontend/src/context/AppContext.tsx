@@ -8,7 +8,9 @@ import {
 } from "react";
 import { type Address } from "viem";
 import { connectWallet, disconnectWallet as disconnectWalletService, getCurrentAccount, onAccountsChanged, onChainChanged, isMetaMaskInstalled } from "../services/walletService";
-import { getUserBalance, getUserReputation, getUserStake, getUserReviews, submitReview as submitReviewService, stakeTokens as stakeTokensService, type Review } from "../services/blockchainService";
+// MOCK MODE: Use mock service for demo/pitching
+import * as mockService from "../services/mockService";
+import type { Review } from "../services/blockchainService";
 import type { WalletClient } from "viem";
 import type { TransactionStatus } from "../components/TransactionToast";
 import { NETWORK_CONFIG } from "../config/contracts";
@@ -189,10 +191,11 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     setBlockchain(prev => ({ ...prev, isLoading: true, error: null }));
 
     try {
+      // MOCK MODE: Use mock service
       const [balance, reputation, stake] = await Promise.allSettled([
-        getUserBalance(user.address),
-        getUserReputation(user.address),
-        getUserStake(user.address),
+        mockService.getUserBalance(user.address),
+        mockService.getUserReputation(user.address),
+        mockService.getUserStake(user.address),
       ]);
 
       const newBalance = balance.status === "fulfilled" ? balance.value : null;
@@ -200,14 +203,14 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       const newStakedAmount = stake.status === "fulfilled" ? stake.value.currentStake : null;
       const newHasSufficientStake = stake.status === "fulfilled" ? stake.value.hasSufficientStake : null;
 
-      // Get reviews - this now returns empty array on error instead of throwing
+      // MOCK MODE: Get reviews from mock service
       let reviews: Review[] = [];
       try {
-        reviews = await getUserReviews(user.address);
-        console.log(`Fetched ${reviews.length} reviews for user`);
+        reviews = await mockService.getUserReviews(user.address) as Review[];
+        console.log(`Fetched ${reviews.length} reviews for user (MOCK)`);
       } catch (error) {
         console.warn("Could not fetch reviews:", error);
-        reviews = []; // Ensure we have an empty array
+        reviews = [];
       }
 
       // Use actual review count from reviews array, not from ReputationSystem
