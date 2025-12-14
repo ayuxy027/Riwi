@@ -1,5 +1,5 @@
 import { formatEther, parseEther, type Address, type WalletClient } from 'viem';
-import { publicClient, reviewTokenContract, reputationSystemContract, reviewStakingContract, reviewPlatformContract } from './contractService';
+import { publicClient, reviewTokenContract, reputationSystemContract, reviewStakingContract, reviewPlatformContract, tokenCashoutContract, isCashoutDeployed } from './contractService';
 import { DEPLOYER_ADDRESS } from "../config/constants";
 
 export interface UserReputation {
@@ -31,16 +31,16 @@ export async function getUserBalance(userAddress: Address, excludeDeployerMint: 
       functionName: 'balanceOf',
       args: [userAddress],
     });
-    
+
     const balanceNumber = parseFloat(formatEther(balance));
-    
+
     // If this is the deployer and we want to exclude initial mint, return 0 for earned display
     // The deployer's 1M tokens are for distribution, not "earned"
     if (excludeDeployerMint && userAddress.toLowerCase() === DEPLOYER_ADDRESS.toLowerCase()) {
       // For deployer, show 0 as "earned" - the 1M is for distribution, not personal earnings
       return 0;
     }
-    
+
     return balanceNumber;
   } catch (error) {
     console.error('Error getting user balance:', error);
@@ -180,11 +180,11 @@ export async function getUserStake(userAddress: Address): Promise<UserStake> {
     // Extract stake amounts - use deltaStake (index 3) as it's the active stake
     const stakeAmount = delegatorData[0]; // stake (processed stake, may be 0)
     const deltaStake = delegatorData[3]; // deltaStake (pending/active stake)
-    
+
     // Use the maximum of stake and deltaStake as active stake
     // This ensures we capture the total staked amount regardless of epoch processing
     const activeStake = deltaStake > stakeAmount ? deltaStake : (stakeAmount > 0n ? stakeAmount : deltaStake);
-    
+
     const stakeAmountNum = parseFloat(formatEther(activeStake));
     const minStakeNum = parseFloat(formatEther(minStake as bigint));
     const hasSufficient = stakeAmountNum >= minStakeNum;
@@ -219,7 +219,7 @@ export async function getUserStake(userAddress: Address): Promise<UserStake> {
 export async function getUserReviews(userAddress: Address): Promise<Review[]> {
   try {
     console.log('Fetching reviews for user:', userAddress);
-    
+
     const reviewIds = await publicClient.readContract({
       ...reviewPlatformContract,
       functionName: 'getReviewsByUser',
@@ -343,7 +343,7 @@ export async function stakeTokens(amount: string, walletClient: WalletClient, us
 
     // Monad staking precompile address
     const STAKING_PRECOMPILE = '0x0000000000000000000000000000000000001000' as Address;
-    
+
     // ABI for delegate function
     const stakingABI = [
       {
@@ -391,7 +391,7 @@ export async function submitReview(content: string, walletClient: WalletClient, 
     // Check stake before submission (frontend validation)
     // The contract will also verify via reviewStaking.canUserReview() which now checks both stake and deltaStake
     const stakeData = await getUserStake(userAddress);
-    
+
     if (!stakeData.hasSufficientStake) {
       throw new Error(`Insufficient stake. You have ${stakeData.currentStake.toFixed(2)} MON staked, but need at least ${stakeData.minStakeAmount.toFixed(2)} MON to submit reviews.`);
     }
@@ -406,7 +406,7 @@ export async function submitReview(content: string, walletClient: WalletClient, 
     console.log('Review transaction submitted, hash:', hash);
 
     // Wait for transaction receipt with timeout
-    const receipt = await publicClient.waitForTransactionReceipt({ 
+    const receipt = await publicClient.waitForTransactionReceipt({
       hash,
       timeout: 120_000, // 2 minutes timeout
     });
@@ -448,3 +448,311 @@ export async function submitReview(content: string, walletClient: WalletClient, 
   }
 }
 
+// ============ CASHOUT FUNCTIONS ============
+
+export interface CashoutInfo {
+  exchangeRate: number;       // MON per 1 RVT
+  treasuryBalance: number;    // Available MON in treasury
+  totalCashedOut: number;     // Total RVT cashed out by all users
+  totalMonDistributed: number; // Total MON distributed
+  minCashoutAmount: number;   // Minimum RVT for cashout
+  maxCashoutAmount: number;   // Maximum RVT per transaction
+  maxCashoutAvailable: number; // Max RVT that can be cashed out (based on treasury)
+  cashoutEnabled: boolean;    // Whether cashout is enabled
+  isDeployed: boolean;        // Whether contract is deployed
+}
+
+export interface UserCashoutStats {
+  rvtCashedOut: number;  // Total RVT user has cashed out
+  monReceived: number;   // Total MON user has received
+  rvtBalance: number;    // User's current RVT balance
+}
+
+/**
+ * Check if cashout contract is deployed and available
+ */
+export function checkCashoutDeployed(): boolean {
+  return isCashoutDeployed();
+}
+
+/**
+ * Get cashout contract information
+ */
+export async function getCashoutInfo(): Promise<CashoutInfo> {
+  // Check if contract is deployed
+  if (!isCashoutDeployed()) {
+    return {
+      exchangeRate: 0,
+      treasuryBalance: 0,
+      totalCashedOut: 0,
+      totalMonDistributed: 0,
+      minCashoutAmount: 0,
+      maxCashoutAmount: 0,
+      maxCashoutAvailable: 0,
+      cashoutEnabled: false,
+      isDeployed: false,
+    };
+  }
+
+  try {
+    const [contractStats, minAmount, maxAmount, maxAvailable] = await Promise.all([
+      publicClient.readContract({
+        ...tokenCashoutContract,
+        functionName: 'getContractStats',
+        args: [],
+      }) as Promise<[bigint, bigint, bigint, bigint, bigint, boolean]>,
+      publicClient.readContract({
+        ...tokenCashoutContract,
+        functionName: 'minCashoutAmount',
+        args: [],
+      }) as Promise<bigint>,
+      publicClient.readContract({
+        ...tokenCashoutContract,
+        functionName: 'maxCashoutAmount',
+        args: [],
+      }) as Promise<bigint>,
+      publicClient.readContract({
+        ...tokenCashoutContract,
+        functionName: 'maxCashoutAvailable',
+        args: [],
+      }) as Promise<bigint>,
+    ]);
+
+    const [totalCashedOut, totalMonDistributed, treasuryBalance, , exchangeRate, cashoutEnabled] = contractStats;
+
+    return {
+      exchangeRate: parseFloat(formatEther(exchangeRate)),
+      treasuryBalance: parseFloat(formatEther(treasuryBalance)),
+      totalCashedOut: parseFloat(formatEther(totalCashedOut)),
+      totalMonDistributed: parseFloat(formatEther(totalMonDistributed)),
+      minCashoutAmount: parseFloat(formatEther(minAmount)),
+      maxCashoutAmount: parseFloat(formatEther(maxAmount)),
+      maxCashoutAvailable: parseFloat(formatEther(maxAvailable)),
+      cashoutEnabled,
+      isDeployed: true,
+    };
+  } catch (error) {
+    console.error('Error getting cashout info:', error);
+    return {
+      exchangeRate: 0,
+      treasuryBalance: 0,
+      totalCashedOut: 0,
+      totalMonDistributed: 0,
+      minCashoutAmount: 0,
+      maxCashoutAmount: 0,
+      maxCashoutAvailable: 0,
+      cashoutEnabled: false,
+      isDeployed: false,
+    };
+  }
+}
+
+/**
+ * Get user's cashout statistics
+ */
+export async function getUserCashoutStats(userAddress: Address): Promise<UserCashoutStats> {
+  if (!isCashoutDeployed()) {
+    const balance = await getUserBalance(userAddress, false);
+    return {
+      rvtCashedOut: 0,
+      monReceived: 0,
+      rvtBalance: balance,
+    };
+  }
+
+  try {
+    const [userStats, rvtBalance] = await Promise.all([
+      publicClient.readContract({
+        ...tokenCashoutContract,
+        functionName: 'getUserStats',
+        args: [userAddress],
+      }) as Promise<[bigint, bigint]>,
+      getUserBalance(userAddress, false),
+    ]);
+
+    const [rvtCashedOut, monReceived] = userStats;
+
+    return {
+      rvtCashedOut: parseFloat(formatEther(rvtCashedOut)),
+      monReceived: parseFloat(formatEther(monReceived)),
+      rvtBalance,
+    };
+  } catch (error) {
+    console.error('Error getting user cashout stats:', error);
+    const balance = await getUserBalance(userAddress, false);
+    return {
+      rvtCashedOut: 0,
+      monReceived: 0,
+      rvtBalance: balance,
+    };
+  }
+}
+
+/**
+ * Calculate MON output for given RVT input
+ */
+export async function calculateCashoutAmount(rvtAmount: string): Promise<number> {
+  if (!isCashoutDeployed() || !rvtAmount || parseFloat(rvtAmount) <= 0) {
+    return 0;
+  }
+
+  try {
+    const result = await publicClient.readContract({
+      ...tokenCashoutContract,
+      functionName: 'calculateCashout',
+      args: [parseEther(rvtAmount)],
+    }) as bigint;
+
+    return parseFloat(formatEther(result));
+  } catch (error) {
+    console.error('Error calculating cashout:', error);
+    return 0;
+  }
+}
+
+/**
+ * Approve RVT tokens for cashout contract spending
+ */
+export async function approveRvtForCashout(
+  amount: string,
+  walletClient: WalletClient,
+  userAddress: Address
+): Promise<string> {
+  if (!isCashoutDeployed()) {
+    throw new Error('Cashout contract not deployed');
+  }
+
+  if (!userAddress) {
+    throw new Error('User address not available');
+  }
+
+  try {
+    const amountWei = parseEther(amount);
+
+    const hash = await walletClient.writeContract({
+      ...reviewTokenContract,
+      functionName: 'approve',
+      args: [tokenCashoutContract.address, amountWei],
+    });
+
+    const receipt = await publicClient.waitForTransactionReceipt({ hash });
+    console.log('RVT approval successful:', receipt.transactionHash);
+    return receipt.transactionHash;
+  } catch (error) {
+    console.error('Error approving RVT for cashout:', error);
+    throw error;
+  }
+}
+
+/**
+ * Execute cashout: Exchange RVT for MON
+ * Note: This requires the user to have approved the cashout contract first
+ * AND the ReviewToken must allow transfers to the cashout contract
+ */
+export async function executeCashout(
+  rvtAmount: string,
+  walletClient: WalletClient,
+  userAddress: Address
+): Promise<string> {
+  if (!isCashoutDeployed()) {
+    throw new Error('Cashout contract not deployed');
+  }
+
+  if (!userAddress) {
+    throw new Error('User address not available');
+  }
+
+  const amount = parseFloat(rvtAmount);
+  if (amount <= 0) {
+    throw new Error('Invalid amount');
+  }
+
+  try {
+    // Get cashout info for validation
+    const cashoutInfo = await getCashoutInfo();
+
+    if (!cashoutInfo.cashoutEnabled) {
+      throw new Error('Cashout is currently disabled');
+    }
+
+    if (amount < cashoutInfo.minCashoutAmount) {
+      throw new Error(`Minimum cashout is ${cashoutInfo.minCashoutAmount} RVT`);
+    }
+
+    if (amount > cashoutInfo.maxCashoutAmount) {
+      throw new Error(`Maximum cashout is ${cashoutInfo.maxCashoutAmount} RVT per transaction`);
+    }
+
+    if (amount > cashoutInfo.maxCashoutAvailable) {
+      throw new Error(`Insufficient treasury. Maximum available: ${cashoutInfo.maxCashoutAvailable.toFixed(2)} RVT`);
+    }
+
+    // Check user's RVT balance
+    const userStats = await getUserCashoutStats(userAddress);
+    if (amount > userStats.rvtBalance) {
+      throw new Error(`Insufficient RVT balance. You have ${userStats.rvtBalance.toFixed(2)} RVT`);
+    }
+
+    // Calculate expected output
+    const expectedMon = await calculateCashoutAmount(rvtAmount);
+    console.log(`Cashing out ${rvtAmount} RVT for ~${expectedMon.toFixed(4)} MON`);
+
+    // Execute cashout
+    const amountWei = parseEther(rvtAmount);
+    const hash = await walletClient.writeContract({
+      ...tokenCashoutContract,
+      functionName: 'cashout',
+      args: [amountWei],
+    });
+
+    // Wait for transaction
+    const receipt = await publicClient.waitForTransactionReceipt({
+      hash,
+      timeout: 120_000,
+    });
+
+    console.log('Cashout successful:', {
+      txHash: receipt.transactionHash,
+      rvtAmount,
+      expectedMon,
+    });
+
+    return receipt.transactionHash;
+  } catch (error) {
+    console.error('Error executing cashout:', error);
+    throw error;
+  }
+}
+
+/**
+ * Full cashout flow: Approve + Cashout in one function
+ */
+export async function cashoutRvtToMon(
+  rvtAmount: string,
+  walletClient: WalletClient,
+  userAddress: Address,
+  onApprovalComplete?: () => void
+): Promise<string> {
+  if (!isCashoutDeployed()) {
+    throw new Error('Cashout contract not deployed. Please wait for deployment.');
+  }
+
+  console.log('Starting cashout flow for', rvtAmount, 'RVT');
+
+  // Step 1: Approve
+  console.log('Step 1: Approving RVT...');
+  await approveRvtForCashout(rvtAmount, walletClient, userAddress);
+
+  if (onApprovalComplete) {
+    onApprovalComplete();
+  }
+
+  // Small delay between transactions
+  await new Promise(resolve => setTimeout(resolve, 1000));
+
+  // Step 2: Cashout
+  console.log('Step 2: Executing cashout...');
+  const txHash = await executeCashout(rvtAmount, walletClient, userAddress);
+
+  return txHash;
+}

@@ -4,6 +4,7 @@ import ReviewTokenABI from '../abis/ReviewToken.json';
 import ReputationSystemABI from '../abis/ReputationSystem.json';
 import ReviewStakingABI from '../abis/ReviewStaking.json';
 import ReviewPlatformABI from '../abis/ReviewPlatform.json';
+import TokenCashoutABI from '../abis/TokenCashout.json';
 
 // Create a custom chain configuration for Monad Testnet
 const monadTestnet = {
@@ -59,3 +60,15 @@ export const reviewPlatformContract = {
   abi: ReviewPlatformABI,
 };
 
+// TokenCashout contract for RVT to MON exchange
+// Note: Address will be empty until contract is deployed
+export const tokenCashoutContract = {
+  address: CONTRACT_ADDRESSES.TOKEN_CASHOUT as Address,
+  abi: TokenCashoutABI,
+};
+
+// Check if cashout contract is deployed
+export const isCashoutDeployed = (): boolean => {
+  return CONTRACT_ADDRESSES.TOKEN_CASHOUT !== "" &&
+    CONTRACT_ADDRESSES.TOKEN_CASHOUT !== undefined;
+};
