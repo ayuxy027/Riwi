@@ -6,14 +6,21 @@ import {
   useEffect,
   type ReactNode,
 } from "react";
-import { type Address } from "viem";
 import { connectWallet, disconnectWallet as disconnectWalletService, getCurrentAccount, onAccountsChanged, onChainChanged, isMetaMaskInstalled } from "../services/walletService";
 // MOCK MODE: Use mock service for demo/pitching
 import * as mockService from "../services/mockService";
 import type { Review } from "../services/blockchainService";
-import type { WalletClient } from "viem";
+import { getUserStake, getUserReviews, getUserBalance, getUserReputation, submitReview as submitReviewService, stakeTokens as stakeTokensService } from "../services/blockchainService";
 import type { TransactionStatus } from "../components/TransactionToast";
-import { NETWORK_CONFIG } from "../config/contracts";
+
+// Define Address type for UI purposes
+type Address = `0x${string}`;
+
+// Define WalletClient type for UI purposes
+interface WalletClient {
+  account?: Address;
+  writeContract?: (args: any) => Promise<any>;
+}
 
 // ============================================
 // Types & Interfaces

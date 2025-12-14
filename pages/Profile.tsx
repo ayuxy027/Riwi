@@ -1,5 +1,4 @@
 import { motion } from "framer-motion";
-import { formatEther } from "viem";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { useApp, truncateAddress } from "../context/AppContext";
@@ -263,7 +262,7 @@ const Profile = () => {
                                             const timeStr = timestamp > 0 ? date.toLocaleTimeString() : "";
                                             const qualityScore = Number(review.qualityScore || 0n);
                                             const rewardAmount = review.rewardAmount || 0n;
-                                            const reward = parseFloat(formatEther(rewardAmount));
+                                            const reward = parseFloat(rewardAmount.toString()) / 1e18;
                                             const status = review.validated ? "Verified ✓" : "Awaiting Validation";
                                             // Show full content, not just preview
                                             const reviewContent = review.content || "No content available";

@@ -4,7 +4,6 @@ import Footer from "../components/Footer";
 import { useApp, truncateAddress } from "../context/AppContext";
 import WriteReviewModal, { type ReviewSubmissionData } from "../components/WriteReviewModal";
 import { TransactionToast } from "../components/TransactionToast";
-import { formatEther } from "viem";
 import type { Review } from "../services/blockchainService";
 import PropertyMarketplace from "../components/PropertyMarketplace";
 import type { Property } from "../data/mockProperties";
@@ -133,7 +132,7 @@ const ReviewHistoryItem = ({ review }: { review: Review }) => {
     const status = review.validated ? "Verified" : "Pending";
     const qualityScore = Number(review.qualityScore || 0n);
     const rewardAmount = review.rewardAmount || 0n;
-    const reward = parseFloat(formatEther(rewardAmount));
+    const reward = parseFloat(rewardAmount.toString()) / 1e18;
 
     // Handle timestamp - ensure it's valid (contract returns uint256)
     const timestamp = Number(review.timestamp || 0n);
