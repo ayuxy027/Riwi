@@ -1,9 +1,9 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import LandingPage from "./pages/Landing";
-import Dashboard from "./pages/Dashboard";
-import Profile from "./pages/Profile";
-import Cashout from "./pages/Cashout";
-import { AppProvider } from "./context/AppContext";
+import LandingPage from "@/pages/Landing";
+import Dashboard from "@/pages/Dashboard";
+import Profile from "@/pages/Profile";
+import Cashout from "@/pages/Cashout";
+import { AppProvider } from "@/context/AppContext";
 
 function App() {
   return (
