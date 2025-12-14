@@ -1,5 +1,5 @@
 // ============================================
-// API Service for MonadReview
+// API Service for Riwi
 // ============================================
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
@@ -210,8 +210,7 @@ export async function checkHealth(): Promise<HealthResponse> {
 /**
  * Submit a review (Mock)
  */
-export async function submitReview(submission: ReviewSubmission): Promise<{ success: boolean; reviewId: string }> {
-  console.log("Submitting review:", submission);
+export async function submitReview(_submission: ReviewSubmission): Promise<{ success: boolean; reviewId: string }> {
   // Mock delay
   await new Promise(resolve => setTimeout(resolve, 1000));
   return { success: true, reviewId: "mock-id-" + Date.now() };
@@ -243,7 +242,6 @@ export async function validateReview(request: ValidationRequest): Promise<Valida
 
     return result.data;
   } catch (error) {
-    console.error('Validation error:', error);
     throw error;
   }
 }

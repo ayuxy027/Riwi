@@ -27,7 +27,7 @@ const features = [
     icon: BarChart3,
   },
   {
-    title: "Monad Speed",
+    title: "Lightning Fast",
     description: "Experience 10,000+ TPS finality. Reviews and rewards process in milliseconds, not minutes.",
     icon: Rocket,
   },

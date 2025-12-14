@@ -1,6 +1,6 @@
-# Monad UI Project Overview
+# Riwi Project Overview
 
-This repository contains the sleek frontend interface for the Monad review system. It provides a beautiful and responsive user interface built with React, TypeScript, and Tailwind CSS.
+This repository contains the sleek frontend interface for the review system. It provides a beautiful and responsive user interface built with React, TypeScript, and Tailwind CSS.
 
 ## Features
 

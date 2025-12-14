@@ -6,13 +6,13 @@ const testimonials = [
     avatar: "AC"
   },
   {
-    content: "Finally, a platform where reviews are actually verified. As a business owner, I value the authentic feedback loop MonadReview provides.",
+    content: "Finally, a platform where reviews are actually verified. As a business owner, I value the authentic feedback loop Riwi provides.",
     author: "Sarah Miller",
     role: "Business Owner",
     avatar: "SM"
   },
   {
-    content: "Staking adds a layer of trust I haven't seen elsewhere. The speed of Monad makes the whole experience feel like a Web2 app.",
+    content: "Staking adds a layer of trust I haven't seen elsewhere. The speed makes the whole experience feel like a Web2 app.",
     author: "Jordan K.",
     role: "DeFi User",
     avatar: "JK"
@@ -26,7 +26,7 @@ const Testimonials = () => {
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6 animate-fade-in-up">Trusted by the Community</h2>
           <p className="text-xl text-gray-500 max-w-2xl mx-auto animate-fade-in-up">
-            Join thousands of users building a more transparent internet on Monad.
+            Join thousands of users building a more transparent internet.
           </p>
         </div>
         <div className="grid md:grid-cols-3 gap-8">

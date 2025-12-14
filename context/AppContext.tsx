@@ -123,8 +123,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           });
           setWalletClient(connection.walletClient);
         }
-      } catch (error) {
-        console.warn("Auto-connect failed:", error);
+      } catch (_error) {
         // Clear disconnected flag if auto-connect fails
         sessionStorage.removeItem('wallet_disconnected');
       }
@@ -157,8 +156,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
               connected: true,
             });
             setWalletClient(connection.walletClient);
-          } catch (error) {
-            console.error("Error reconnecting after account change:", error);
+          } catch (_error) {
             // Still update address even if reconnect fails
             setUser({
               address: accounts[0],
@@ -175,8 +173,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         connectWallet().then(connection => {
           setWalletClient(connection.walletClient);
           refreshUserData();
-        }).catch(error => {
-          console.error("Error reconnecting after chain change:", error);
+        }).catch(_error => {
           refreshUserData();
         });
       }
@@ -212,9 +209,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       let reviews: Review[] = [];
       try {
         reviews = await getUserReviews(user.address);
-        console.log(`Fetched ${reviews.length} reviews for user (UI)`);
-      } catch (error) {
-        console.warn("Could not fetch reviews:", error);
+      } catch (_error) {
         reviews = [];
       }
 
@@ -288,7 +283,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         error: errorMessage,
         isLoading: false,
       }));
-      console.error("Error connecting wallet:", error);
       // Re-throw to allow UI to handle it
       throw error;
     } finally {
@@ -307,8 +301,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       setBlockchain(DEFAULT_BLOCKCHAIN_STATE);
       setWalletClient(null);
       setTransaction(null);
-    } catch (error) {
-      console.error("Error disconnecting wallet:", error);
+    } catch (_error) {
       // Still clear state even if there's an error
       sessionStorage.setItem('wallet_disconnected', 'true');
       setUser(DEFAULT_USER);
@@ -335,7 +328,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         const connection = await connectWallet();
         currentWalletClient = connection.walletClient;
         setWalletClient(currentWalletClient);
-      } catch (error) {
+      } catch (_error) {
         throw new Error("Failed to connect wallet. Please try connecting again.");
       }
     }
@@ -357,8 +350,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         txHash,
       });
       
-      // Wait for transaction to be confirmed on blockchain (increased wait time for Monad)
-      console.log('Waiting for staking transaction to be confirmed...');
+      // Wait for transaction to be confirmed on blockchain
       await new Promise(resolve => setTimeout(resolve, 5000)); // Increased to 5 seconds
       
       // Force refresh user data after staking - with retries
@@ -368,16 +360,10 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       
       while (refreshAttempts < maxAttempts) {
         try {
-          console.log(`Staking refresh attempt ${refreshAttempts + 1}/${maxAttempts}`);
           
           // Directly fetch stake data first (bypasses cache)
           const updatedStake = await getUserStake(user.address);
-          console.log('Stake data fetched:', {
-            previous: previousStake,
-            current: updatedStake.currentStake,
-            hasSufficient: updatedStake.hasSufficientStake,
-          });
-          
+
           // Update blockchain state immediately with new stake data
           setBlockchain(prev => ({
             ...prev,
@@ -387,15 +373,13 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           
           // If stake increased or we've tried enough times, break
           if (updatedStake.currentStake > previousStake || refreshAttempts >= 3) {
-            console.log('Stake updated successfully, breaking retry loop');
             break;
           }
           
           // Also do full refresh
           await refreshUserData();
           
-        } catch (error) {
-          console.warn(`Staking refresh attempt ${refreshAttempts + 1} failed:`, error);
+        } catch (_error) {
         }
         
         refreshAttempts++;
@@ -404,7 +388,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       }
       
       // Final refresh to ensure everything is synced
-      console.log('Performing final refresh after staking...');
       await refreshUserData();
       
       // One more direct stake check
@@ -446,7 +429,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         const connection = await connectWallet();
         currentWalletClient = connection.walletClient;
         setWalletClient(currentWalletClient);
-      } catch (error) {
+      } catch (_error) {
         throw new Error("Failed to connect wallet. Please try connecting again.");
       }
     }
@@ -466,9 +449,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         txHash,
       });
 
-      // Wait for blockchain confirmation before refreshing (increased for Monad)
-      console.log('Waiting for blockchain state to propagate...');
-      await new Promise(resolve => setTimeout(resolve, 6000)); // Increased wait time for Monad
+      // Wait for blockchain confirmation before refreshing
+      await new Promise(resolve => setTimeout(resolve, 6000)); // Increased wait time
 
       // Refresh user data after submission with retries
       let refreshAttempts = 0;
@@ -477,15 +459,12 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       
       while (refreshAttempts < maxAttempts) {
         try {
-          console.log(`Review refresh attempt ${refreshAttempts + 1}/${maxAttempts}`);
           
           // Fetch reviews directly first (bypasses cache)
           const updatedReviews = await getUserReviews(user.address);
-          console.log(`Found ${updatedReviews.length} reviews (previous: ${previousReviewCount})`);
           
           // If we got new reviews, update state immediately
           if (updatedReviews.length > previousReviewCount) {
-            console.log('New reviews detected! Updating state...');
             setBlockchain(prev => ({
               ...prev,
               reviews: updatedReviews,
@@ -501,10 +480,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           
           // Check again after refresh
           const reviewsAfterRefresh = await getUserReviews(user.address);
-          console.log(`Reviews after refresh: ${reviewsAfterRefresh.length}`);
           
           if (reviewsAfterRefresh.length > previousReviewCount || refreshAttempts >= 6) {
-            console.log('Reviews updated after refresh, breaking retry loop');
             setBlockchain(prev => ({
               ...prev,
               reviews: reviewsAfterRefresh,
@@ -512,20 +489,17 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
             }));
             break;
           }
-        } catch (error) {
-          console.warn(`Review refresh attempt ${refreshAttempts + 1} failed:`, error);
+        } catch (_error) {
         }
         refreshAttempts++;
         await new Promise(resolve => setTimeout(resolve, 4000)); // Wait 4 seconds between retries
       }
 
       // Final refresh to ensure everything is synced
-      console.log('Performing final refresh after review submission...');
       await refreshUserData();
       
       // One more direct check
       const finalReviews = await getUserReviews(user.address);
-      console.log(`Final review count: ${finalReviews.length}`);
       setBlockchain(prev => ({
         ...prev,
         reviews: finalReviews,

@@ -327,7 +327,6 @@ const Dashboard = () => {
             handleCloseReviewModal();
             // Data will refresh automatically via context
         } catch (error: unknown) {
-            console.error("Failed to submit review:", error);
             const errorMessage = error instanceof Error ? error.message : "Failed to submit review. Please try again.";
             alert(errorMessage);
         }
@@ -480,7 +479,7 @@ const Dashboard = () => {
                             </div>
                             <h2 className="text-2xl font-bold text-gray-900 mb-4">Connect MetaMask Wallet</h2>
                             <p className="text-gray-500 mb-6 max-w-md mx-auto leading-relaxed">
-                                Connect your MetaMask wallet to view your reputation stats, earnings, and review history on Monad testnet.
+                                Connect your MetaMask wallet to view your reputation stats, earnings, and review history.
                             </p>
                             <div className="mb-10">
                                 <a

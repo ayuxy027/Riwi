@@ -12,20 +12,20 @@ const Footer = () => {
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
         <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-12 mb-16">
           <div className="lg:col-span-2">
-            <Link to="/" className="flex items-center gap-2 mb-6 text-monad-900">
-              <div className="w-8 h-8 bg-monad-600 rounded-full flex items-center justify-center">
-                <span className="text-white font-bold text-sm">MR</span>
+            <Link to="/" className="flex items-center gap-2 mb-6 text-gray-900">
+              <div className="w-8 h-8 bg-[#6E54FF] rounded-full flex items-center justify-center">
+                <span className="text-white font-bold text-sm">R</span>
               </div>
-              <span className="font-bold text-xl tracking-tight text-gray-900">MonadReview</span>
+              <span className="font-bold text-xl tracking-tight text-gray-900">Riwi</span>
             </Link>
             <p className="text-gray-500 leading-relaxed max-w-sm mb-6">
-              Decentralized, AI-powered review system built on Monad.
+              AI-powered review system.
               Authentic feedback, instant rewards, and a reputation you own.
             </p>
             <div className="flex gap-4">
               {/* Social Icons Placeholder */}
               {[1, 2, 3].map((i) => (
-                <div key={i} className="w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center text-gray-400 hover:bg-monad-50 hover:text-monad-600 transition-colors cursor-pointer">
+                <div key={i} className="w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center text-gray-400 hover:bg-[#6E54FF]/10 hover:text-[#6E54FF] transition-colors cursor-pointer">
                   •
                 </div>
               ))}
@@ -38,7 +38,7 @@ const Footer = () => {
               <ul className="space-y-3">
                 {links.map((link) => (
                   <li key={link}>
-                    <a href="#" className="text-gray-500 hover:text-monad-600 transition-colors text-sm">
+                    <a href="#" className="text-gray-500 hover:text-[#6E54FF] transition-colors text-sm">
                       {link}
                     </a>
                   </li>
@@ -50,7 +50,7 @@ const Footer = () => {
 
         <div className="border-t border-gray-100 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-gray-400 text-sm">
-            © 2025 MonadReview. All rights reserved.
+            © 2025 Riwi. All rights reserved.
           </p>
           <div className="flex gap-6 text-sm text-gray-400">
             <a href="#" className="hover:text-gray-600">Privacy</a>

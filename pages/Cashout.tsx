@@ -99,7 +99,6 @@ export default function Cashout() {
                 setUserStats(stats);
             }
         } catch (err) {
-            console.error('Error loading cashout data:', err);
             setError('Failed to load cashout information');
         } finally {
             setLoading(false);
@@ -118,7 +117,6 @@ export default function Cashout() {
                 const mon = await calculateCashoutAmount(amount);
                 setExpectedMon(mon);
             } catch (err) {
-                console.error('Error calculating cashout:', err);
                 setExpectedMon(0);
             }
         };

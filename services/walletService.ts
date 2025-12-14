@@ -33,14 +33,12 @@ export async function connectWallet(): Promise<WalletConnection> {
   const mockWalletClient = {
     account: address,
     // Add mock writeContract function
-    writeContract: async (args: any) => {
-      console.log("Mock transaction:", args);
+    writeContract: async (_args: any) => {
       // Simulate transaction with a fake hash
       return `0x${Math.random().toString(16).substring(2, 66)}`;
     }
   };
 
-  console.log('Mock wallet connected:', address);
 
   return {
     address: address as Address,
@@ -50,7 +48,6 @@ export async function connectWallet(): Promise<WalletConnection> {
 
 // Disconnect wallet
 export function disconnectWallet(): void {
-  console.log('Mock wallet disconnected');
 }
 
 // Get current connected account
@@ -66,17 +63,13 @@ export async function getCurrentAccount(): Promise<Address | null> {
 // Listen for account changes (mock)
 export function onAccountsChanged(_callback: (accounts: Address[]) => void): () => void {
   // In mock, we don't listen for actual changes
-  console.log('Mock account change listener registered');
   return () => {
-    console.log('Mock account change listener removed');
   };
 }
 
 // Listen for chain changes (mock)
 export function onChainChanged(_callback: (chainId: string) => void): () => void {
   // In mock, we don't listen for actual changes
-  console.log('Mock chain change listener registered');
   return () => {
-    console.log('Mock chain change listener removed');
   };
 }

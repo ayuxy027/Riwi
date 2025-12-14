@@ -83,7 +83,6 @@ const WriteReviewModal = ({ isOpen, onClose, onSubmit, selectedProperty: preSele
                 breakdown: result.breakdown,
             });
         } catch (error) {
-            console.error("AI validation failed:", error);
             // Fallback to a simple local validation
             const score = Math.min(Math.round(30 + content.length / 3), 70);
             setAiResult({

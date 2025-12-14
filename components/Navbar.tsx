@@ -3,7 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useApp, truncateAddress } from "../context/AppContext";
 
 // ============================================
-// Navbar Component (Monad Theme)
+// Navbar Component (Riwi Theme)
 // ============================================
 
 const Navbar = () => {
@@ -27,11 +27,11 @@ const Navbar = () => {
         <div className="flex items-center justify-between bg-[#6E54FF]/5 backdrop-blur-xl border-none rounded-full px-4 py-2 shadow-lg shadow-[#6E54FF]/10">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 group">
-            <div className="w-8 h-8 bg-monad-600 rounded-full flex items-center justify-center group-hover:bg-monad-700 transition-all duration-300">
-              <span className="text-white font-bold text-sm">MR</span>
+            <div className="w-8 h-8 bg-[#6E54FF] rounded-full flex items-center justify-center group-hover:bg-[#5a42de] transition-all duration-300">
+              <span className="text-white font-bold text-sm">R</span>
             </div>
             <span className="font-semibold text-gray-900 tracking-tight hidden sm:block">
-              MonadReview
+              Riwi
             </span>
           </Link>
 
@@ -42,7 +42,7 @@ const Navbar = () => {
                 key={link.path}
                 to={link.path}
                 className={`text-sm px-3 py-1.5 rounded-full transition-all duration-300 ease-out ${isActive(link.path)
-                  ? "bg-monad-50 text-monad-700 font-medium"
+                  ? "bg-[#6E54FF]/10 text-[#6E54FF] font-medium"
                   : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                   }`}
               >
@@ -72,17 +72,17 @@ const Navbar = () => {
               {user.connected && user.address ? (
                 <button
                   onClick={() => setShowMenu(!showMenu)}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-full hover:shadow-md transition-all bg-monad-50 border border-monad-200"
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-full hover:shadow-md transition-all bg-[#6E54FF]/10 border border-[#6E54FF]/30"
                 >
-                  <div className="w-6 h-6 rounded-full flex items-center justify-center bg-monad-600">
+                  <div className="w-6 h-6 rounded-full flex items-center justify-center bg-[#6E54FF]">
                     <span className="text-white text-xs font-bold">
                       {user.address.slice(2, 4).toUpperCase()}
                     </span>
                   </div>
-                  <span className="text-xs font-medium hidden sm:block text-monad-700">
+                  <span className="text-xs font-medium hidden sm:block text-[#6E54FF]">
                     {truncateAddress(user.address)}
                   </span>
-                  <svg className="w-3 h-3 text-monad-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="w-3 h-3 text-[#6E54FF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
@@ -105,7 +105,7 @@ const Navbar = () => {
                 <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50">
                   <div className="p-4 bg-gray-50 border-b border-gray-100">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center bg-monad-600">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center bg-[#6E54FF]">
                         <span className="text-white font-bold">
                           {user.address?.slice(2, 4).toUpperCase()}
                         </span>
@@ -158,7 +158,7 @@ const Navbar = () => {
                   to={link.path}
                   onClick={() => setMobileMenuOpen(false)}
                   className={`block text-sm px-4 py-2.5 rounded-xl transition-all duration-300 ${isActive(link.path)
-                    ? "bg-monad-50 text-monad-700 font-medium"
+                    ? "bg-[#6E54FF]/10 text-[#6E54FF] font-medium"
                     : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                     }`}
                 >

@@ -4,22 +4,6 @@ import { Lock, FileText, Trophy, Coins, ArrowUpRight } from "lucide-react";
 const Hero = () => {
   return (
     <section className="min-h-screen bg-white pt-20 relative overflow-hidden font-jakarta">
-      {/* Dashed Grid Background Pattern */}
-      <div
-        className="absolute inset-0 z-0"
-        style={{
-          backgroundImage: `
-            linear-gradient(to right, #e5e7eb 1px, transparent 1px),
-            linear-gradient(to bottom, #e5e7eb 1px, transparent 1px)
-          `,
-          backgroundSize: "24px 24px",
-          maskImage: `radial-gradient(ellipse at center, black 40%, transparent 80%)`,
-          WebkitMaskImage: `radial-gradient(ellipse at center, black 40%, transparent 80%)`,
-        }}
-      />
-
-      {/* Decorative Blur/Glow */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-[#6E54FF] opacity-[0.08] blur-[120px] rounded-full pointer-events-none z-0"></div>
 
       <div className="max-w-7xl mx-auto px-6 lg:px-8 pt-12 pb-24 relative z-10">
         <div className="text-center max-w-4xl mx-auto">
@@ -32,7 +16,7 @@ const Hero = () => {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#6E54FF] opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-[#6E54FF]"></span>
             </span>
-            <span className="text-sm text-gray-700 font-medium tracking-wide">AI-Powered Review System on Monad</span>
+            <span className="text-sm text-gray-700 font-medium tracking-wide">AI-Powered Review System</span>
           </div>
 
           {/* Heading */}
@@ -42,7 +26,7 @@ const Hero = () => {
           >
             Authentic Reviews,
             <br />
-            <span className="text-[#6E54FF]">Verified on Monad.</span>
+            <span className="text-[#6E54FF]">Verified on Riwi.</span>
           </h1>
 
           {/* Subheading */}
@@ -50,8 +34,8 @@ const Hero = () => {
             className="text-lg md:text-xl text-gray-500 max-w-2xl mx-auto mb-10 leading-relaxed animate-fade-in-up font-medium"
             style={{ animationDelay: '200ms', animationFillMode: 'both' }}
           >
-            MonadReview leverages <strong>gMonad</strong> speed and AI intelligence to ensure review quality.
-            Earn <strong>MR tokens</strong> for helpful feedback and build a trusted on-chain reputation.
+            Riwi leverages speed and AI intelligence to ensure review quality.
+            Earn <strong>R tokens</strong> for helpful feedback and build a trusted reputation.
           </p>
 
           {/* CTA Buttons */}
@@ -77,7 +61,7 @@ const Hero = () => {
             <p className="text-sm text-gray-400 mb-6 font-semibold uppercase tracking-wider">Trusted by Ecosystem Builders</p>
             <div className="flex flex-wrap items-center justify-center gap-x-12 gap-y-6 grayscale opacity-70 hover:grayscale-0 hover:opacity-100 transition-all duration-500">
               {/* Replace with SVGs in production, using text for now with hover color */}
-              {['Monad', 'LayerZero', 'Pyth', 'Wormhole', 'Switchboard'].map((brand) => (
+              {['Riwi', 'AI', 'Blockchain', 'Web3', 'DeFi'].map((brand) => (
                 <span
                   key={brand}
                   className="text-xl font-bold text-gray-400 hover:text-[#6E54FF] transition-colors cursor-default"
@@ -106,7 +90,7 @@ const Hero = () => {
                 </div>
                 <div className="flex-1 flex justify-center">
                   <div className="flex items-center gap-2 px-4 py-1.5 bg-white border border-gray-200 rounded-lg text-xs text-gray-500 font-medium shadow-sm w-64 justify-center">
-                    <Lock className="w-3 h-3 text-green-500" /> monadreview.app/dashboard
+                    <Lock className="w-3 h-3 text-green-500" /> riwi.app/dashboard
                   </div>
                 </div>
               </div>
@@ -136,7 +120,7 @@ const Hero = () => {
                   <div className="flex items-center justify-between mb-8">
                     <div>
                       <h4 className="text-lg font-bold text-gray-900">Recent Activity</h4>
-                      <p className="text-sm text-gray-500">Real-time verifications on Monad</p>
+                      <p className="text-sm text-gray-500">Real-time verifications</p>
                     </div>
                     <button className="text-sm font-bold text-[#6E54FF] hover:bg-[#6E54FF]/5 px-4 py-2 rounded-lg transition-colors flex items-center gap-1">
                       View Explorer <ArrowUpRight size={14} />

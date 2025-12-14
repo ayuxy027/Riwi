@@ -1,16 +1,16 @@
 <div align="center">
 
-# 🌟 **Monad UI**
-### *Modern Frontend Interface for the Monad Review System*
+# 🌟 **Riwi**
+### *Modern Frontend Interface for the Review System*
 
-**[ 🔥 Sleek UI ] [ ⚡ Fast Performance ] [ 🎨 Responsive Design ] [ 🚀 Monad Powered ]**
+**[ 🔥 Sleek UI ] [ ⚡ Fast Performance ] [ 🎨 Responsive Design ] [ 🚀 AI Powered ]**
 
 </div>
 
 ---
 
 ## 🎯 **The Vision**
-A beautiful, user-friendly interface for interacting with the Monad review system with **seamless UX** and **responsive design**.
+A beautiful, user-friendly interface for interacting with the review system with **seamless UX** and **responsive design**.
 
 <p align="center">
   <img src="https://img.shields.io/badge/Status-UI_Only_Application-6E54FF?style=for-the-badge" />
